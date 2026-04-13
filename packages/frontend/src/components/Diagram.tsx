@@ -1,13 +1,39 @@
-import { type Edge, type Node, type NodeTypes, type OnNodesChange, ReactFlow } from "@xyflow/react";
+import {
+  type Edge,
+  type EdgeTypes,
+  type Node,
+  type NodeTypes,
+  type OnNodesChange,
+  ReactFlow,
+} from "@xyflow/react";
 import { useMemo } from "react";
 import "@xyflow/react/dist/style.css";
-import type { Schema } from "../types.js";
+import type { Relation, Schema } from "../types.js";
 import styles from "./Diagram.module.css";
+import { RelationEdge } from "./RelationEdge.js";
 import { TableNode, type TableNodeData } from "./TableNode.js";
 
 const nodeTypes: NodeTypes = {
   table: TableNode,
 };
+
+const edgeTypes: EdgeTypes = {
+  relation: RelationEdge,
+};
+
+function cardinalityLabels(cardinality: Relation["cardinality"]): {
+  srcCardinality: string;
+  refCardinality: string;
+} {
+  switch (cardinality) {
+    case "one-to-one":
+      return { srcCardinality: "1", refCardinality: "1" };
+    case "many-to-one":
+      return { srcCardinality: "N", refCardinality: "1" };
+    case "many-to-many":
+      return { srcCardinality: "N", refCardinality: "N" };
+  }
+}
 
 interface DiagramProps {
   schema: Schema;
@@ -33,7 +59,8 @@ export function Diagram({ schema, nodes, onNodesChange }: DiagramProps) {
         target: rel.ref.table,
         sourceHandle: `${rel.src.column}-${srcSide}-source`,
         targetHandle: `${rel.ref.column}-${refSide}-target`,
-        type: "smoothstep",
+        type: "relation",
+        data: cardinalityLabels(rel.cardinality),
       };
     });
   }, [schema.relations, nodes]);
@@ -44,6 +71,7 @@ export function Diagram({ schema, nodes, onNodesChange }: DiagramProps) {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         fitView
         nodesConnectable={false}
