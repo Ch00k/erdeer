@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { parseAml } from "../aml.js";
 import { fetchDiagram, updateDiagram } from "../api.js";
+import { AmlReference } from "../components/AmlReference.js";
 import { Diagram } from "../components/Diagram.js";
 import { Editor } from "../components/Editor.js";
 import { Footer } from "../components/Footer.js";
@@ -36,7 +37,8 @@ export function DesignerPage() {
   const [schema, setSchema] = useState<Schema>({ tables: [], relations: [] });
   const [nodes, setNodes] = useState<Node<TableNodeData>[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editorWidth, setEditorWidth] = useState(400);
+  const [editorWidth, setEditorWidth] = useState(() => Math.round(window.innerWidth * 0.25));
+  const [referenceOpen, setReferenceOpen] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const layoutTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const layoutRef = useRef<Layout>({});
@@ -163,11 +165,17 @@ export function DesignerPage() {
       <Navbar center={titleInput} />
       <div className={styles.workspace}>
         <div className={styles.editorPane} style={{ width: editorWidth }}>
-          <Editor value={aml} onChange={handleChange} />
+          <Editor
+            value={aml}
+            onChange={handleChange}
+            onToggleReference={() => setReferenceOpen((v) => !v)}
+            referenceOpen={referenceOpen}
+          />
         </div>
         <ResizeHandle onResize={handleResize} />
         <div className={styles.diagramPane}>
           <Diagram schema={schema} nodes={nodes} onNodesChange={handleNodesChange} />
+          {referenceOpen && <AmlReference onClose={() => setReferenceOpen(false)} />}
         </div>
       </div>
       <Footer />

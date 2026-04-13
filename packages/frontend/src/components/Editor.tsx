@@ -9,9 +9,17 @@ interface EditorProps {
   value: string;
   onChange?: (value: string) => void;
   readOnly?: boolean;
+  onToggleReference?: () => void;
+  referenceOpen?: boolean;
 }
 
-export function Editor({ value, onChange, readOnly }: EditorProps) {
+export function Editor({
+  value,
+  onChange,
+  readOnly,
+  onToggleReference,
+  referenceOpen,
+}: EditorProps) {
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const [wordWrap, setWordWrap] = useState(true);
 
@@ -47,21 +55,40 @@ export function Editor({ value, onChange, readOnly }: EditorProps) {
     <div className={styles.container}>
       <div className={styles.header}>
         <span>AML</span>
-        <button
-          className={`${styles.wrapToggle} ${wordWrap ? styles.wrapToggleActive : ""}`}
-          onClick={() => setWordWrap(!wordWrap)}
-          title={wordWrap ? "Disable word wrap" : "Enable word wrap"}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M3 6h18M3 12h15a3 3 0 1 1 0 6h-4M16 16l-2 2M16 20l-2-2"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
+        <div className={styles.headerActions}>
+          {onToggleReference && (
+            <button
+              className={`${styles.headerButton} ${referenceOpen ? styles.headerButtonActive : ""}`}
+              onClick={onToggleReference}
+              title={referenceOpen ? "Hide AML reference" : "Show AML reference"}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          )}
+          <button
+            className={`${styles.headerButton} ${wordWrap ? styles.headerButtonActive : ""}`}
+            onClick={() => setWordWrap(!wordWrap)}
+            title={wordWrap ? "Disable word wrap" : "Enable word wrap"}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M3 6h18M3 12h15a3 3 0 1 1 0 6h-4M16 16l-2 2M16 20l-2-2"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
       <div className={styles.editorWrapper}>
         <MonacoEditor
@@ -84,8 +111,8 @@ export function Editor({ value, onChange, readOnly }: EditorProps) {
             scrollbar: {
               vertical: "auto",
               horizontal: "auto",
-              verticalScrollbarSize: 8,
-              horizontalScrollbarSize: 8,
+              verticalScrollbarSize: 4,
+              horizontalScrollbarSize: 4,
             },
             wordWrap: wordWrap ? "on" : "off",
             tabSize: 2,

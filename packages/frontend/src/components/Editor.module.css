@@ -18,7 +18,13 @@
   background: var(--color-table-header);
 }
 
-.wrapToggle {
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.headerButton {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -32,17 +38,17 @@
   opacity: 0.5;
 }
 
-.wrapToggle:hover {
+.headerButton:hover {
   background: var(--color-border);
   opacity: 0.8;
 }
 
-.wrapToggleActive {
+.headerButtonActive {
   opacity: 1;
   color: var(--color-primary);
 }
 
-.wrapToggleActive:hover {
+.headerButtonActive:hover {
   opacity: 1;
 }
 

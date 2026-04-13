@@ -27,6 +27,7 @@ Version 0.0.1 - **alpha** (not yet used by users).
 - `components/Navbar.tsx` - shared navbar with user dropdown menu (Teams, API Tokens, Sign out, Delete account)
 - `components/Footer.tsx` - shared footer with copyright and Schema link
 - `components/ConfirmDialog.tsx` - modal confirmation dialog (replaces native confirm())
+- `components/AmlReference.tsx` - toggleable AML language reference panel for the designer
 - `components/ResizeHandle.tsx` - draggable divider for resizing editor pane
 - `components/Editor.tsx` - Monaco-based AML editor with word wrap toggle
 - `components/Diagram.tsx` - React Flow canvas, computes edges from schema relations
@@ -46,6 +47,7 @@ Version 0.0.1 - **alpha** (not yet used by users).
 
 - `src/db/schema.ts` - Drizzle ORM table definitions (users, oauth_accounts, sessions, teams, team_members, role_permissions, diagrams, api_tokens)
 - `src/db/connection.ts` - SQLite connection via better-sqlite3 with WAL mode
+- `src/auth/dev.ts` - Dev mode auto-login: seeds a dev user and stable session on startup
 - `src/auth/providers.ts` - Arctic OAuth provider setup (GitHub, Google, GitLab)
 - `src/auth/session.ts` - Session creation, validation (with auto-extend), deletion
 - `src/auth/routes.ts` - OAuth login/callback routes, logout, /auth/me, /auth/providers endpoints
@@ -88,7 +90,7 @@ Exposes diagram CRUD and AML validation via MCP (Model Context Protocol) at `POS
 
 **Auth**: Bearer token via `Authorization: Bearer erd_...` header. Tokens are managed via REST API (`/api/tokens`) and scoped to the same permissions as the user.
 
-**Tools**: list_diagrams, get_diagram, create_diagram, update_diagram, delete_diagram, validate_aml
+**Tools**: list_teams, list_diagrams, get_diagram, create_diagram, update_diagram, delete_diagram, validate_aml
 
 **Resources**: `aml://spec` - AML language specification (docs/aml-spec.md)
 
@@ -104,8 +106,9 @@ Exposes diagram CRUD and AML validation via MCP (Model Context Protocol) at `POS
 - `DATABASE_PATH` - SQLite database path (default: `data/db.sqlite`)
 - `PORT` - Server port (default: `3001`)
 - `HOST` - Bind address (default: `127.0.0.1`)
+- `DEV_MODE` - Set to any value to auto-create a dev user and session, bypassing OAuth login
 
-At least one OAuth provider must be configured. Unconfigured providers are hidden from the login page.
+At least one OAuth provider must be configured in production. In dev, set `DEV_MODE=1` to skip OAuth entirely.
 
 ## Development
 

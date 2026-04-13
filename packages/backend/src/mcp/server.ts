@@ -12,7 +12,7 @@ import { z } from "zod";
 import { generateId } from "../auth/session.js";
 import { requireTokenAuth } from "../auth/token.js";
 import { db } from "../db/connection.js";
-import { diagrams, teamMembers } from "../db/schema.js";
+import { diagrams, teamMembers, teams } from "../db/schema.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const amlSpecPath = resolve(__dirname, "../../../../docs/aml-spec.md");
@@ -40,6 +40,24 @@ function createMcpServer(userId: string): McpServer {
       ],
     }),
   );
+
+  // Tool: list_teams
+  server.tool("list_teams", "List teams the authenticated user belongs to", {}, async () => {
+    const result = await db
+      .select({
+        id: teams.id,
+        name: teams.name,
+        createdAt: teams.createdAt,
+      })
+      .from(teamMembers)
+      .innerJoin(teams, eq(teamMembers.teamId, teams.id))
+      .where(eq(teamMembers.userId, userId))
+      .all();
+
+    return {
+      content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
+    };
+  });
 
   // Tool: list_diagrams
   server.tool(

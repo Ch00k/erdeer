@@ -32,6 +32,23 @@ app.get("/health", async () => {
 const port = Number(process.env.PORT) || 3001;
 const baseUrl = process.env.BASE_URL || "http://localhost:7000";
 
+if (process.env.DEV_MODE) {
+  const { ensureDevSession } = await import("./auth/dev.js");
+  const devSessionId = await ensureDevSession();
+  app.addHook("onRequest", async (req, reply) => {
+    if (!req.cookies.session) {
+      req.cookies.session = devSessionId;
+      reply.setCookie("session", devSessionId, {
+        path: "/",
+        httpOnly: true,
+        sameSite: "lax",
+        maxAge: 30 * 24 * 60 * 60,
+      });
+    }
+  });
+  app.log.info("Dev mode: auto-login enabled");
+}
+
 const providers = createProviders(baseUrl);
 registerAuthRoutes(app, providers);
 await registerDiagramRoutes(app);

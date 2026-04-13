@@ -32,7 +32,7 @@ export function SchemaPage() {
   const [aml, setAml] = useState(schemaAml);
   const [schema, setSchema] = useState<Schema>(initialSchema);
   const [nodes, setNodes] = useState<Node<TableNodeData>[]>(() => schemaToNodes(initialSchema, {}));
-  const [editorWidth, setEditorWidth] = useState(400);
+  const [editorWidth, setEditorWidth] = useState(() => Math.round(window.innerWidth * 0.25));
   const layoutRef = useRef<Layout>({});
 
   const handleChange = useCallback((value: string) => {
