@@ -159,7 +159,7 @@ Constraints follow the type and default value:
 |---|---|---|
 | Primary key | `pk` or `pk=name` | Marks attribute as part of the primary key |
 | Unique | `unique` | Unique constraint |
-| Index | `index` | Database index |
+| Index | `index` or `index=name` | Database index |
 | Nullable | `nullable` | Allows NULL values. **AML attributes are NOT NULL by default** (opposite of SQL) |
 | Check | `check` or `check(`\`expression\``)` | Check constraint, optionally with a backtick-quoted expression |
 | Relation | `-> target(attr)` | Inline foreign key (see Relations section) |
@@ -179,6 +179,15 @@ user_roles
   role_id uuid pk -> roles(id)
 ```
 Multiple attributes with `pk` form a composite primary key.
+
+**Multiple constraints per attribute:** An attribute can carry more than one constraint of the same kind. This is useful when an attribute participates in several composite indexes:
+```
+route_stop
+  airport varchar(3) index=idx_airport_role index=idx_airport_dep index=idx_airport_arr
+  role varchar(20) index=idx_airport_role
+  departure_date date index=idx_airport_dep
+  arrival_date date index=idx_airport_arr
+```
 
 **Check constraint with name:**
 ```

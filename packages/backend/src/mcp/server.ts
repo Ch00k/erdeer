@@ -13,6 +13,7 @@ import { generateId } from "../auth/session.js";
 import { requireTokenAuth } from "../auth/token.js";
 import { db } from "../db/connection.js";
 import { diagrams, teamMembers, teams } from "../db/schema.js";
+import { emitDiagramListChanged, emitDiagramUpdate, getAffectedUserIds } from "../events.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const amlSpecPath = resolve(__dirname, "../../../../docs/aml-spec.md");
@@ -155,6 +156,10 @@ function createMcpServer(userId: string): McpServer {
       });
 
       const diagram = await db.select().from(diagrams).where(eq(diagrams.id, id)).get();
+      const affectedUsers = await getAffectedUserIds(userId, teamId ?? null);
+      for (const uid of affectedUsers) {
+        emitDiagramListChanged(uid, { sourceSessionId: null });
+      }
       return {
         content: [{ type: "text" as const, text: JSON.stringify(diagram, null, 2) }],
       };
@@ -197,6 +202,7 @@ function createMcpServer(userId: string): McpServer {
       if (amlContent !== undefined) updates.amlContent = amlContent;
 
       await db.update(diagrams).set(updates).where(eq(diagrams.id, id));
+      emitDiagramUpdate({ diagramId: id, sourceSessionId: null });
       const updated = await db.select().from(diagrams).where(eq(diagrams.id, id)).get();
       return {
         content: [{ type: "text" as const, text: JSON.stringify(updated, null, 2) }],
@@ -223,7 +229,11 @@ function createMcpServer(userId: string): McpServer {
         };
       }
 
+      const affectedUsers = await getAffectedUserIds(userId, diagram.teamId);
       await db.delete(diagrams).where(eq(diagrams.id, id));
+      for (const uid of affectedUsers) {
+        emitDiagramListChanged(uid, { sourceSessionId: null });
+      }
       return {
         content: [{ type: "text" as const, text: JSON.stringify({ ok: true }) }],
       };

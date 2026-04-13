@@ -5,6 +5,13 @@ import { requireAuth } from "../auth/middleware.js";
 import { generateId } from "../auth/session.js";
 import { db } from "../db/connection.js";
 import { diagrams, teamMembers } from "../db/schema.js";
+import {
+  emitDiagramListChanged,
+  emitDiagramUpdate,
+  getAffectedUserIds,
+  onDiagramListChanged,
+  onDiagramUpdate,
+} from "../events.js";
 
 export async function registerDiagramRoutes(app: FastifyInstance) {
   await app.register(async (scoped) => {
@@ -38,6 +45,27 @@ export async function registerDiagramRoutes(app: FastifyInstance) {
       return allTeamDiagrams.filter((d) => d.teamId && teamIds.includes(d.teamId));
     });
 
+    // SSE: subscribe to diagram list changes
+    scoped.get("/api/diagrams/events", async (req, reply) => {
+      const userId = (req as any).userId as string;
+      const sessionId = (req as any).sessionId as string;
+
+      const raw = reply.raw;
+      raw.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      });
+      raw.write(`event: connected\ndata: ${JSON.stringify({ sessionId })}\n\n`);
+
+      const unsubscribe = onDiagramListChanged(userId, (event) => {
+        const data = JSON.stringify({ sourceSessionId: event.sourceSessionId });
+        raw.write(`event: changed\ndata: ${data}\n\n`);
+      });
+
+      req.raw.on("close", unsubscribe);
+    });
+
     // Get a single diagram
     scoped.get("/api/diagrams/:id", async (req, reply) => {
       const userId = (req as any).userId as string;
@@ -68,6 +96,48 @@ export async function registerDiagramRoutes(app: FastifyInstance) {
       return diagram;
     });
 
+    // SSE: subscribe to diagram updates
+    scoped.get("/api/diagrams/:id/events", async (req, reply) => {
+      const userId = (req as any).userId as string;
+      const sessionId = (req as any).sessionId as string;
+      const { id } = req.params as { id: string };
+
+      const diagram = await db.select().from(diagrams).where(eq(diagrams.id, id)).get();
+      if (!diagram) {
+        return reply.status(404).send({ error: "Diagram not found" });
+      }
+
+      if (diagram.ownerUserId !== userId) {
+        if (diagram.teamId) {
+          const membership = await db
+            .select()
+            .from(teamMembers)
+            .where(and(eq(teamMembers.teamId, diagram.teamId), eq(teamMembers.userId, userId)))
+            .get();
+          if (!membership) {
+            return reply.status(403).send({ error: "Access denied" });
+          }
+        } else {
+          return reply.status(403).send({ error: "Access denied" });
+        }
+      }
+
+      const raw = reply.raw;
+      raw.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      });
+      raw.write(`event: connected\ndata: ${JSON.stringify({ sessionId })}\n\n`);
+
+      const unsubscribe = onDiagramUpdate(id, (event) => {
+        const data = JSON.stringify({ sourceSessionId: event.sourceSessionId });
+        raw.write(`event: updated\ndata: ${data}\n\n`);
+      });
+
+      req.raw.on("close", unsubscribe);
+    });
+
     // Create a diagram
     scoped.post("/api/diagrams", async (req) => {
       const userId = (req as any).userId as string;
@@ -89,7 +159,13 @@ export async function registerDiagramRoutes(app: FastifyInstance) {
         updatedAt: now,
       });
 
-      return db.select().from(diagrams).where(eq(diagrams.id, id)).get();
+      const created = await db.select().from(diagrams).where(eq(diagrams.id, id)).get();
+      const sessionId = (req as any).sessionId as string;
+      const affectedUsers = await getAffectedUserIds(userId, teamId ?? null);
+      for (const uid of affectedUsers) {
+        emitDiagramListChanged(uid, { sourceSessionId: sessionId });
+      }
+      return created;
     });
 
     // Update a diagram
@@ -130,6 +206,8 @@ export async function registerDiagramRoutes(app: FastifyInstance) {
       if (layout !== undefined) updates.layout = layout;
 
       await db.update(diagrams).set(updates).where(eq(diagrams.id, id));
+      const sessionId = (req as any).sessionId as string;
+      emitDiagramUpdate({ diagramId: id, sourceSessionId: sessionId });
       return db.select().from(diagrams).where(eq(diagrams.id, id)).get();
     });
 
@@ -148,7 +226,12 @@ export async function registerDiagramRoutes(app: FastifyInstance) {
         return reply.status(403).send({ error: "Only the owner can delete a diagram" });
       }
 
+      const affectedUsers = await getAffectedUserIds(userId, diagram.teamId);
       await db.delete(diagrams).where(eq(diagrams.id, id));
+      const sessionId = (req as any).sessionId as string;
+      for (const uid of affectedUsers) {
+        emitDiagramListChanged(uid, { sourceSessionId: sessionId });
+      }
       return { ok: true };
     });
   });

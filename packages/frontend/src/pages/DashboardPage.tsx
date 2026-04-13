@@ -46,6 +46,24 @@ export function DashboardPage() {
     loadData();
   }, [loadData]);
 
+  // Subscribe to server-sent events for external changes (e.g. MCP create/delete)
+  useEffect(() => {
+    const eventSource = new EventSource("/api/diagrams/events");
+    let sessionId: string | null = null;
+
+    eventSource.addEventListener("connected", (e) => {
+      sessionId = JSON.parse(e.data).sessionId;
+    });
+
+    eventSource.addEventListener("changed", (e) => {
+      const { sourceSessionId } = JSON.parse(e.data);
+      if (sourceSessionId === sessionId) return;
+      loadData();
+    });
+
+    return () => eventSource.close();
+  }, [loadData]);
+
   useEffect(() => {
     if (!menuOpen) return;
     const handleClick = (e: MouseEvent) => {

@@ -7,16 +7,29 @@ export function Footer() {
   return (
     <footer className={styles.footer}>
       <span className={styles.copyright}>&copy; {new Date().getFullYear()} ERDeer</span>
-      <a
-        href="/schema"
-        className={styles.link}
-        onClick={(e) => {
-          e.preventDefault();
-          navigate("/schema");
-        }}
-      >
-        Schema
-      </a>
+      <div className={styles.links}>
+        <span>
+          Powered by{" "}
+          <a
+            href="https://azimutt.app/docs/aml"
+            className={styles.link}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            AML
+          </a>
+        </span>
+        <a
+          href="/schema"
+          className={styles.link}
+          onClick={(e) => {
+            e.preventDefault();
+            navigate("/schema");
+          }}
+        >
+          ERDeer Schema
+        </a>
+      </div>
     </footer>
   );
 }

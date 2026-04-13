@@ -43,21 +43,48 @@ export function DesignerPage() {
   const layoutTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const layoutRef = useRef<Layout>({});
 
+  const applyDiagramData = useCallback(
+    (d: { title: string; amlContent: string; layout: string }) => {
+      setTitle(d.title);
+      setAml(d.amlContent);
+      const parsed = parseAml(d.amlContent);
+      const savedLayout: Layout = d.layout ? JSON.parse(d.layout) : {};
+      layoutRef.current = savedLayout;
+      setSchema(parsed);
+      setNodes(schemaToNodes(parsed, savedLayout));
+    },
+    [],
+  );
+
   useEffect(() => {
     if (!id) return;
     fetchDiagram(id)
       .then((d) => {
-        setTitle(d.title);
-        setAml(d.amlContent);
-        const parsed = parseAml(d.amlContent);
-        const savedLayout: Layout = d.layout ? JSON.parse(d.layout) : {};
-        layoutRef.current = savedLayout;
-        setSchema(parsed);
-        setNodes(schemaToNodes(parsed, savedLayout));
+        applyDiagramData(d);
         setLoading(false);
       })
       .catch(() => navigate("/"));
-  }, [id, navigate]);
+  }, [id, navigate, applyDiagramData]);
+
+  // Subscribe to server-sent events for external updates
+  useEffect(() => {
+    if (!id || loading) return;
+
+    const eventSource = new EventSource(`/api/diagrams/${id}/events`);
+    let sessionId: string | null = null;
+
+    eventSource.addEventListener("connected", (e) => {
+      sessionId = JSON.parse(e.data).sessionId;
+    });
+
+    eventSource.addEventListener("updated", (e) => {
+      const { sourceSessionId } = JSON.parse(e.data);
+      if (sourceSessionId === sessionId) return;
+      fetchDiagram(id).then(applyDiagramData);
+    });
+
+    return () => eventSource.close();
+  }, [id, loading, applyDiagramData]);
 
   const saveAml = useCallback(
     (content: string) => {

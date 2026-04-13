@@ -67,14 +67,16 @@ created_at timestamp=\`now()\``}</Code>
             <tbody>
               <Tr k="pk" v="Primary key" />
               <Tr k="unique" v="Unique constraint" />
-              <Tr k="index" v="Database index" />
+              <Tr k="index or index=name" v="Database index" />
               <Tr k="nullable" v="Allows NULL" />
               <Tr k="check" v="Check constraint" />
               <Tr k={`check(\`age > 0\`)`} v="Check with expression" />
             </tbody>
           </table>
           <P>
-            Composite constraints share a name: <C>first_name varchar unique=name_uniq</C>
+            Composite constraints share a name: <C>first_name varchar unique=name_uniq</C>. An
+            attribute can carry multiple constraints of the same kind:{" "}
+            <C>airport varchar index=idx_a index=idx_b</C>
           </P>
         </Section>
 

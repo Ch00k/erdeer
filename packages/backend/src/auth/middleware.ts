@@ -16,4 +16,5 @@ export async function requireAuth(req: FastifyRequest, reply: FastifyReply) {
 
   (req as any).userId = result.user.id;
   (req as any).userRole = result.user.role;
+  (req as any).sessionId = sessionId;
 }

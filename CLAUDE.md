@@ -57,6 +57,7 @@ Version 0.0.1 - **alpha** (not yet used by users).
 - `src/diagrams/routes.ts` - Diagram CRUD API (personal/team list, get, create, update, delete)
 - `src/teams/routes.ts` - Team CRUD API (list, create, members, add/remove member)
 - `src/tokens/routes.ts` - API token management (list, create, revoke) - session-auth protected
+- `src/events.ts` - In-memory event bus for diagram update notifications (used by SSE endpoint)
 - `src/mcp/server.ts` - MCP server with Streamable HTTP transport, diagram CRUD tools, AML spec resource
 - `drizzle.config.ts` - Drizzle Kit config for migrations
 - `drizzle/` - Generated SQL migration files
@@ -81,6 +82,7 @@ Version 0.0.1 - **alpha** (not yet used by users).
 - **Biome** for linting and formatting (configured at root `biome.json`)
 - **husky** + **lint-staged** for pre-commit hooks (runs biome on staged files)
 - **Vite proxy** forwards `/auth` and `/api` requests to backend in dev
+- **SSE for live updates** - Two SSE endpoints: `GET /api/diagrams/:id/events` (diagram content changes) and `GET /api/diagrams/events` (diagram list changes). Backend emits from both REST API and MCP write paths. List events notify all affected team members. Frontend `DesignerPage` and `DashboardPage` subscribe and re-fetch on external changes, filtering out own session via `sourceSessionId`.
 - Interactive features disabled: no edge drawing, no edge selection, no element selection
 - IE (crow's foot) markers: TODO - removed for now, to be revisited
 - VIEW badge on table header: TODO - parse view property from entity and show badge to distinguish views from tables
