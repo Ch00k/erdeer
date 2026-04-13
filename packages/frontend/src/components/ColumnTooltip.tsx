@@ -6,12 +6,29 @@ interface ColumnTooltipProps {
   side: "left" | "right";
 }
 
+function formatConstraint(name: string | undefined, columns: string[]): string {
+  if (columns.length <= 1) return name ?? "";
+  const formatted = columns.join(", ");
+  return name ? `${name} (${formatted})` : `(${formatted})`;
+}
+
 export function ColumnTooltip({ column, side }: ColumnTooltipProps) {
   const constraints: string[] = [];
-  if (column.primaryKey) constraints.push("Primary Key");
-  if (column.unique) constraints.push("Unique");
-  if (column.indexed) constraints.push("Indexed");
+  if (column.primaryKey) {
+    constraints.push(
+      column.primaryKeyColumns
+        ? `Primary Key (${column.primaryKeyColumns.join(", ")})`
+        : "Primary Key",
+    );
+  }
   if (column.nullable) constraints.push("Nullable");
+
+  const uniqueDetails =
+    column.uniqueConstraints?.map((u) => formatConstraint(u.name, u.columns)) ?? [];
+  if (column.unique && uniqueDetails.length === 0) uniqueDetails.push("");
+
+  const indexDetails = column.indexes?.map((ix) => formatConstraint(ix.name, ix.columns)) ?? [];
+  if (column.indexed && indexDetails.length === 0) indexDetails.push("");
 
   return (
     <div className={`${styles.tooltip} ${side === "left" ? styles.left : styles.right}`}>
@@ -23,6 +40,26 @@ export function ColumnTooltip({ column, side }: ColumnTooltipProps) {
         <div className={styles.row}>
           <span className={styles.label}>Constraints</span>
           <span className={styles.value}>{constraints.join(", ")}</span>
+        </div>
+      )}
+      {uniqueDetails.length > 0 && (
+        <div className={styles.constraintList}>
+          <span className={styles.label}>Unique</span>
+          {uniqueDetails.map((detail) => (
+            <span key={detail} className={styles.value}>
+              {detail}
+            </span>
+          ))}
+        </div>
+      )}
+      {indexDetails.length > 0 && (
+        <div className={styles.constraintList}>
+          <span className={styles.label}>Indexes</span>
+          {indexDetails.map((detail) => (
+            <span key={detail} className={styles.value}>
+              {detail}
+            </span>
+          ))}
         </div>
       )}
       {column.default !== undefined && (

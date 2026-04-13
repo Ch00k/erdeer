@@ -7,13 +7,21 @@ export interface Position {
   y: number;
 }
 
+export interface NamedConstraint {
+  name?: string;
+  columns: string[];
+}
+
 export interface Column {
   name: string;
   type: string;
   primaryKey: boolean;
+  primaryKeyColumns?: string[];
   nullable: boolean;
   unique: boolean;
+  uniqueConstraints?: NamedConstraint[];
   indexed: boolean;
+  indexes?: NamedConstraint[];
   default?: string;
   check?: string;
   enumValues?: string[];

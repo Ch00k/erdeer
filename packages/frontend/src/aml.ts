@@ -1,5 +1,5 @@
 import { parseAml as parse } from "@azimutt/aml";
-import type { Column, Relation, Schema, Table } from "./types.js";
+import type { Column, NamedConstraint, Relation, Schema, Table } from "./types.js";
 
 const TABLE_SPACING_X = 320;
 const TABLE_SPACING_Y = 40;
@@ -22,27 +22,29 @@ export function parseAml(input: string): Schema {
     return { tables: [], relations: [] };
   }
 
-  // Collect PK attribute names per entity for lookup
-  const pkAttrs = new Map<string, Set<string>>();
+  // Collect PK columns per entity
+  const pkColumns = new Map<string, string[]>();
   for (const entity of db.entities ?? []) {
     if (entity.pk) {
-      const names = new Set<string>();
-      for (const attrPath of entity.pk.attrs) {
-        if (attrPath.length > 0) names.add(attrPath[0]);
-      }
-      pkAttrs.set(entity.name, names);
+      const names = entity.pk.attrs.map((p) => p[0]).filter(Boolean);
+      if (names.length > 0) pkColumns.set(entity.name, names);
     }
   }
 
-  // Collect indexed attribute names per entity
-  const indexedAttrs = new Map<string, Set<string>>();
-  const uniqueAttrs = new Map<string, Set<string>>();
+  // Collect indexes and unique constraints per entity per column
+  const indexesByAttr = new Map<string, Map<string, NamedConstraint[]>>();
+  const uniqueByAttr = new Map<string, Map<string, NamedConstraint[]>>();
   for (const entity of db.entities ?? []) {
     for (const idx of entity.indexes ?? []) {
-      const targetSet = idx.unique ? uniqueAttrs : indexedAttrs;
-      if (!targetSet.has(entity.name)) targetSet.set(entity.name, new Set());
-      for (const attrPath of idx.attrs) {
-        if (attrPath.length > 0) targetSet.get(entity.name)!.add(attrPath[0]);
+      const columns = idx.attrs.map((p) => p[0]).filter(Boolean);
+      if (columns.length === 0) continue;
+      const constraint: NamedConstraint = { name: idx.name, columns };
+      const targetMap = idx.unique ? uniqueByAttr : indexesByAttr;
+      if (!targetMap.has(entity.name)) targetMap.set(entity.name, new Map());
+      const attrMap = targetMap.get(entity.name)!;
+      for (const col of columns) {
+        if (!attrMap.has(col)) attrMap.set(col, []);
+        attrMap.get(col)!.push(constraint);
       }
     }
   }
@@ -71,23 +73,33 @@ export function parseAml(input: string): Schema {
 
   const tables: Table[] = (db.entities ?? []).map((entity, i) => {
     const pos = layoutPosition(i);
-    const entityPk = pkAttrs.get(entity.name) ?? new Set();
-    const entityIndexed = indexedAttrs.get(entity.name) ?? new Set();
-    const entityUnique = uniqueAttrs.get(entity.name) ?? new Set();
+    const entityPkColumns = pkColumns.get(entity.name);
+    const entityPkSet = new Set(entityPkColumns);
+    const entityIndexes = indexesByAttr.get(entity.name) ?? new Map();
+    const entityUniques = uniqueByAttr.get(entity.name) ?? new Map();
     const entityChecks = checkAttrs.get(entity.name) ?? new Map();
 
-    const columns: Column[] = (entity.attrs ?? []).map((attr) => ({
-      name: attr.name,
-      type: attr.type ?? "unknown",
-      primaryKey: entityPk.has(attr.name),
-      nullable: attr.null === true,
-      unique: entityUnique.has(attr.name),
-      indexed: entityIndexed.has(attr.name),
-      default: attr.default != null ? String(attr.default) : undefined,
-      check: entityChecks.get(attr.name),
-      enumValues: attr.type ? enumTypes.get(attr.type) : undefined,
-      comment: attr.doc ?? undefined,
-    }));
+    const columns: Column[] = (entity.attrs ?? []).map((attr) => {
+      const isPk = entityPkSet.has(attr.name);
+      const attrIndexes = entityIndexes.get(attr.name);
+      const attrUniques = entityUniques.get(attr.name);
+      return {
+        name: attr.name,
+        type: attr.type ?? "unknown",
+        primaryKey: isPk,
+        primaryKeyColumns:
+          isPk && entityPkColumns && entityPkColumns.length > 1 ? entityPkColumns : undefined,
+        nullable: attr.null === true,
+        unique: attrUniques != null,
+        uniqueConstraints: attrUniques,
+        indexed: attrIndexes != null,
+        indexes: attrIndexes,
+        default: attr.default != null ? String(attr.default) : undefined,
+        check: entityChecks.get(attr.name),
+        enumValues: attr.type ? enumTypes.get(attr.type) : undefined,
+        comment: attr.doc ?? undefined,
+      };
+    });
 
     // TODO: extract view property from entity.extra and pass to Table for visual badge
     return {
