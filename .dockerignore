@@ -1,0 +1,16 @@
+node_modules
+packages/*/node_modules
+packages/*/dist
+packages/backend/data
+.env
+.envrc
+*.sqlite*
+.git
+.gitignore
+.husky
+.claude
+biome.json
+Makefile
+CLAUDE.md
+.env.example
+compose.yaml

@@ -1,0 +1,16 @@
+.handle {
+  width: 5px;
+  cursor: col-resize;
+  background: transparent;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+  margin-left: -3px;
+  margin-right: -2px;
+}
+
+.handle:hover,
+.handle:active {
+  background: var(--color-primary);
+  opacity: 0.3;
+}

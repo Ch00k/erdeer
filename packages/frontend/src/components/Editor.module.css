@@ -1,0 +1,52 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-table-header);
+}
+
+.wrapToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0.5;
+}
+
+.wrapToggle:hover {
+  background: var(--color-border);
+  opacity: 0.8;
+}
+
+.wrapToggleActive {
+  opacity: 1;
+  color: var(--color-primary);
+}
+
+.wrapToggleActive:hover {
+  opacity: 1;
+}
+
+.editorWrapper {
+  flex: 1;
+  overflow: hidden;
+}

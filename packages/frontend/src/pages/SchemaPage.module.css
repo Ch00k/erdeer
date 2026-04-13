@@ -1,0 +1,33 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.pageTitle {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.workspace {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.editorPane {
+  min-width: 200px;
+  max-width: 800px;
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.diagramPane {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-canvas-bg);
+}

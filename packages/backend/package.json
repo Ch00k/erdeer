@@ -1,0 +1,31 @@
+{
+  "name": "@erdeer/backend",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=../../.env src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
+  },
+  "dependencies": {
+    "@azimutt/aml": "^0.1.10",
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/static": "^9.1.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "arctic": "^3.7.0",
+    "better-sqlite3": "^12.8.0",
+    "drizzle-orm": "^0.45.2",
+    "fastify": "^5.8.4",
+    "tsx": "^4.19.4",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "drizzle-kit": "^0.31.10",
+    "typescript": "^6.0.2"
+  }
+}

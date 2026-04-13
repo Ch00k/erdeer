@@ -1,0 +1,20 @@
+.layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.editorPane {
+  width: 400px;
+  min-width: 300px;
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.diagramPane {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-canvas-bg);
+}

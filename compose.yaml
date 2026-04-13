@@ -1,0 +1,27 @@
+services:
+  app:
+    build: .
+    pull_policy: build
+    volumes:
+      - ./data:/app/packages/backend/data
+    networks:
+      - caddy_network
+    environment:
+      PORT: 3000
+      HOST: 0.0.0.0
+      BASE_URL: ${BASE_URL}
+      ALLOWED_DOMAINS: ${ALLOWED_DOMAINS:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GITLAB_CLIENT_ID: ${GITLAB_CLIENT_ID:-}
+      GITLAB_CLIENT_SECRET: ${GITLAB_CLIENT_SECRET:-}
+    labels:
+      caddy: erdeer.dev
+      caddy.encode: zstd gzip
+      caddy.reverse_proxy: "{{upstreams 3000}}"
+
+networks:
+  caddy_network:
+    external: true
