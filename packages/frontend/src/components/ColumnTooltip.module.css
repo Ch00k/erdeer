@@ -3,13 +3,14 @@
   z-index: 1000;
   top: 50%;
   transform: translateY(-50%);
+  width: max-content;
   min-width: 200px;
-  max-width: 320px;
+  max-width: 480px;
   padding: 8px 10px;
   background: var(--color-bg);
   color: var(--color-text);
   border: 1px solid var(--color-border);
-  font-size: 11px;
+  font-size: 10px;
   font-family: var(--font-mono);
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
@@ -89,7 +90,6 @@
 .constraintList .value {
   text-align: right;
   word-break: break-word;
-  font-size: 10px;
 }
 
 .enumValues {
