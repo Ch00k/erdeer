@@ -82,3 +82,43 @@ export const diagrams = sqliteTable("diagrams", {
   teamId: text("team_id").references(() => teams.id),
   ...timestamps,
 });
+
+export const commentThreads = sqliteTable(
+  "comment_threads",
+  {
+    id: text("id").primaryKey(),
+    diagramId: text("diagram_id")
+      .notNull()
+      .references(() => diagrams.id, { onDelete: "cascade" }),
+    anchorType: text("anchor_type").notNull(),
+    anchorEntity: text("anchor_entity"),
+    anchorColumn: text("anchor_column"),
+    resolvedAt: integer("resolved_at", { mode: "timestamp" }),
+    resolvedBy: text("resolved_by").references(() => users.id),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => users.id),
+    updatedBy: text("updated_by")
+      .notNull()
+      .references(() => users.id),
+    ...timestamps,
+  },
+  (table) => [
+    check(
+      "comment_threads_anchor_type_check",
+      sql`${table.anchorType} IN ('diagram', 'entity', 'column')`,
+    ),
+  ],
+);
+
+export const comments = sqliteTable("comments", {
+  id: text("id").primaryKey(),
+  threadId: text("thread_id")
+    .notNull()
+    .references(() => commentThreads.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id),
+  body: text("body").notNull(),
+  ...timestamps,
+});

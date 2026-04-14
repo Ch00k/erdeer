@@ -17,7 +17,7 @@ Version 0.0.1 - **alpha** (not yet used by users).
 
 - `App.tsx` - router setup with auth-protected routes
 - `auth.tsx` - AuthContext provider, fetches current user on load
-- `api.ts` - API client functions (auth, diagrams CRUD, teams, tokens)
+- `api.ts` - API client functions (auth, diagrams CRUD, teams, tokens, comment threads)
 - `pages/LoginPage.tsx` - OAuth login buttons (GitHub, Google, GitLab)
 - `pages/DashboardPage.tsx` - diagram list with personal/team tabs, create/delete
 - `pages/DesignerPage.tsx` - AML editor + diagram canvas, auto-saves to API
@@ -27,11 +27,12 @@ Version 0.0.1 - **alpha** (not yet used by users).
 - `components/Navbar.tsx` - shared navbar with user dropdown menu (Teams, API Tokens, Sign out, Delete account)
 - `components/Footer.tsx` - shared footer with copyright and Schema link
 - `components/ConfirmDialog.tsx` - modal confirmation dialog (replaces native confirm())
+- `components/CommentsPanel.tsx` - toggleable comments sidebar for the designer (thread list, replies, resolve, CRUD)
 - `components/AmlReference.tsx` - toggleable AML language reference panel for the designer
 - `components/ResizeHandle.tsx` - draggable divider for resizing editor pane
 - `components/Editor.tsx` - Monaco-based AML editor with word wrap toggle
 - `components/Diagram.tsx` - React Flow canvas, computes edges from schema relations
-- `components/TableNode.tsx` - custom React Flow node for database tables
+- `components/TableNode.tsx` - custom React Flow node for database tables (with comment thread badges)
 - `aml.ts` - adapter between @azimutt/aml parser output and our Schema types
 
 ### Frontend routes
@@ -45,7 +46,7 @@ Version 0.0.1 - **alpha** (not yet used by users).
 
 ### Backend structure
 
-- `src/db/schema.ts` - Drizzle ORM table definitions (users, oauth_accounts, sessions, teams, team_members, role_permissions, diagrams, api_tokens)
+- `src/db/schema.ts` - Drizzle ORM table definitions (users, oauth_accounts, sessions, teams, team_members, role_permissions, diagrams, api_tokens, comment_threads, comments)
 - `src/db/connection.ts` - SQLite connection via better-sqlite3 with WAL mode
 - `src/auth/dev.ts` - Dev mode auto-login: seeds a dev user and stable session on startup
 - `src/auth/providers.ts` - Arctic OAuth provider setup (GitHub, Google, GitLab)
@@ -54,10 +55,12 @@ Version 0.0.1 - **alpha** (not yet used by users).
 - `src/auth/middleware.ts` - requireAuth hook, attaches userId and userRole to request
 - `src/auth/permissions.ts` - hasPermission check (default-allow when no permissions defined for a role)
 - `src/auth/token.ts` - API token creation, hashing, and bearer token auth middleware
+- `src/comments/routes.ts` - Comment thread and comment CRUD API (list, create, resolve, reply, edit, delete)
+- `src/comments/cleanup.ts` - Orphan thread cleanup (deletes threads whose anchor entity/column was removed from AML)
 - `src/diagrams/routes.ts` - Diagram CRUD API (personal/team list, get, create, update, delete)
 - `src/teams/routes.ts` - Team CRUD API (list, create, members, add/remove member)
 - `src/tokens/routes.ts` - API token management (list, create, revoke) - session-auth protected
-- `src/events.ts` - In-memory event bus for diagram update notifications (used by SSE endpoint)
+- `src/events.ts` - In-memory event bus for diagram update and comment notifications (used by SSE endpoint)
 - `src/mcp/server.ts` - MCP server with Streamable HTTP transport, diagram CRUD tools, AML spec resource
 - `drizzle.config.ts` - Drizzle Kit config for migrations
 - `drizzle/` - Generated SQL migration files
@@ -82,7 +85,8 @@ Version 0.0.1 - **alpha** (not yet used by users).
 - **Biome** for linting and formatting (configured at root `biome.json`)
 - **husky** + **lint-staged** for pre-commit hooks (runs biome on staged files)
 - **Vite proxy** forwards `/auth` and `/api` requests to backend in dev
-- **SSE for live updates** - Two SSE endpoints: `GET /api/diagrams/:id/events` (diagram content changes) and `GET /api/diagrams/events` (diagram list changes). Backend emits from both REST API and MCP write paths. List events notify all affected team members. Frontend `DesignerPage` and `DashboardPage` subscribe and re-fetch on external changes, filtering out own session via `sourceSessionId`.
+- **SSE for live updates** - Two SSE endpoints: `GET /api/diagrams/:id/events` (diagram content + comment changes) and `GET /api/diagrams/events` (diagram list changes). Backend emits from both REST API and MCP write paths. List events notify all affected team members. Frontend `DesignerPage` and `DashboardPage` subscribe and re-fetch on external changes, filtering out own session via `sourceSessionId`. Comment events use `event: comment` SSE type on the diagram events endpoint.
+- **Threaded comments** - Confluence-style comment threads anchored to diagrams, entities (tables), or columns. Threads support resolution and full CRUD. Any team member can comment on team diagrams and resolve/unresolve threads. Only authors can edit/delete their own comments. Orphaned threads (whose anchor entity/column was deleted from AML) are hard-deleted asynchronously on diagram save. Comments are plain text, stored in `comment_threads` and `comments` tables with cascade deletes from the parent diagram.
 - Interactive features disabled: no edge drawing, no edge selection, no element selection
 - IE (crow's foot) markers: TODO - removed for now, to be revisited
 - VIEW badge on table header: TODO - parse view property from entity and show badge to distinguish views from tables

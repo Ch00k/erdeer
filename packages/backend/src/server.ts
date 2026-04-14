@@ -7,6 +7,7 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import Fastify from "fastify";
 import { createProviders } from "./auth/providers.js";
 import { registerAuthRoutes } from "./auth/routes.js";
+import { registerCommentRoutes } from "./comments/routes.js";
 import { db } from "./db/connection.js";
 import { registerDiagramRoutes } from "./diagrams/routes.js";
 import { registerMcpRoutes } from "./mcp/server.js";
@@ -51,6 +52,7 @@ if (process.env.DEV_MODE) {
 
 const providers = createProviders(baseUrl);
 registerAuthRoutes(app, providers);
+await registerCommentRoutes(app);
 await registerDiagramRoutes(app);
 await registerTeamRoutes(app);
 await registerTokenRoutes(app);
