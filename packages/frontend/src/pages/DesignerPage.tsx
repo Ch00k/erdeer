@@ -2,15 +2,16 @@ import { applyNodeChanges, type Node, type OnNodesChange } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { parseAml } from "../aml.js";
-import { fetchDiagram, updateDiagram } from "../api.js";
+import { fetchDiagram, fetchThreads, updateDiagram } from "../api.js";
 import { AmlReference } from "../components/AmlReference.js";
+import { type Anchor, CommentsPanel } from "../components/CommentsPanel.js";
 import { Diagram } from "../components/Diagram.js";
 import { Editor } from "../components/Editor.js";
 import { Footer } from "../components/Footer.js";
 import { Navbar } from "../components/Navbar.js";
 import { ResizeHandle } from "../components/ResizeHandle.js";
 import type { TableNodeData } from "../components/TableNode.js";
-import type { Schema } from "../types.js";
+import type { CommentThread, Schema } from "../types.js";
 import styles from "./DesignerPage.module.css";
 
 type Layout = Record<string, { x: number; y: number }>;
@@ -39,6 +40,9 @@ export function DesignerPage() {
   const [loading, setLoading] = useState(true);
   const [editorWidth, setEditorWidth] = useState(() => Math.round(window.innerWidth * 0.25));
   const [referenceOpen, setReferenceOpen] = useState(false);
+  const [threads, setThreads] = useState<CommentThread[]>([]);
+  const [commentsPanelOpen, setCommentsPanelOpen] = useState(false);
+  const [activeAnchor, setActiveAnchor] = useState<Anchor | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const layoutTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const layoutRef = useRef<Layout>({});
@@ -64,6 +68,7 @@ export function DesignerPage() {
         setLoading(false);
       })
       .catch(() => navigate("/"));
+    fetchThreads(id).then(setThreads);
   }, [id, navigate, applyDiagramData]);
 
   // Subscribe to server-sent events for external updates
@@ -81,6 +86,12 @@ export function DesignerPage() {
       const { sourceSessionId } = JSON.parse(e.data);
       if (sourceSessionId === sessionId) return;
       fetchDiagram(id).then(applyDiagramData);
+    });
+
+    eventSource.addEventListener("comment", (e) => {
+      const { sourceSessionId: src } = JSON.parse(e.data);
+      if (src === sessionId) return;
+      fetchThreads(id).then(setThreads);
     });
 
     return () => eventSource.close();
@@ -202,7 +213,45 @@ export function DesignerPage() {
         <ResizeHandle onResize={handleResize} />
         <div className={styles.diagramPane}>
           <Diagram schema={schema} nodes={nodes} onNodesChange={handleNodesChange} />
+          <button
+            className={styles.commentsToggle}
+            onClick={() => {
+              setCommentsPanelOpen((v) => !v);
+              if (!commentsPanelOpen) {
+                setActiveAnchor({ type: "diagram" });
+              }
+            }}
+            title="Toggle comments"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" />
+            </svg>
+            {threads.filter((t) => !t.resolvedAt).length > 0 && (
+              <span className={styles.commentsCount}>
+                {threads.filter((t) => !t.resolvedAt).length}
+              </span>
+            )}
+          </button>
           {referenceOpen && <AmlReference onClose={() => setReferenceOpen(false)} />}
+          {commentsPanelOpen && (
+            <CommentsPanel
+              diagramId={id!}
+              threads={threads}
+              activeAnchor={activeAnchor}
+              onClose={() => setCommentsPanelOpen(false)}
+              onThreadsChange={setThreads}
+              onClearAnchor={() => setActiveAnchor(null)}
+            />
+          )}
         </div>
       </div>
       <Footer />

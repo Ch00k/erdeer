@@ -4,11 +4,18 @@ import type { Column } from "../types.js";
 import { ColumnTooltip } from "./ColumnTooltip.js";
 import styles from "./TableNode.module.css";
 
+export type ThreadCounts = {
+  entity: number;
+  columns: Record<string, number>;
+};
+
 export type TableNodeData = {
   label: string;
   schema?: string;
   columns: Column[];
   comment?: string;
+  threadCounts?: ThreadCounts;
+  onCommentClick?: (anchor: { type: "entity" | "column"; entity: string; column?: string }) => void;
 };
 
 type TableNodeType = Node<TableNodeData, "table">;

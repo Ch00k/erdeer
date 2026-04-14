@@ -47,3 +47,33 @@ export interface Schema {
   tables: Table[];
   relations: Relation[];
 }
+
+export interface CommentUser {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+}
+
+export interface ThreadComment {
+  id: string;
+  threadId: string;
+  user: CommentUser;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommentThread {
+  id: string;
+  diagramId: string;
+  anchorType: "diagram" | "entity" | "column";
+  anchorEntity: string | null;
+  anchorColumn: string | null;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+  createdBy: CommentUser;
+  updatedBy: CommentUser;
+  comments: ThreadComment[];
+  createdAt: string;
+  updatedAt: string;
+}

@@ -3,12 +3,14 @@ import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { requireAuth } from "../auth/middleware.js";
 import { generateId } from "../auth/session.js";
+import { cleanupOrphanedThreads } from "../comments/cleanup.js";
 import { db } from "../db/connection.js";
 import { diagrams, teamMembers } from "../db/schema.js";
 import {
   emitDiagramListChanged,
   emitDiagramUpdate,
   getAffectedUserIds,
+  onCommentEvent,
   onDiagramListChanged,
   onDiagramUpdate,
 } from "../events.js";
@@ -130,12 +132,24 @@ export async function registerDiagramRoutes(app: FastifyInstance) {
       });
       raw.write(`event: connected\ndata: ${JSON.stringify({ sessionId })}\n\n`);
 
-      const unsubscribe = onDiagramUpdate(id, (event) => {
+      const unsubDiagram = onDiagramUpdate(id, (event) => {
         const data = JSON.stringify({ sourceSessionId: event.sourceSessionId });
         raw.write(`event: updated\ndata: ${data}\n\n`);
       });
 
-      req.raw.on("close", unsubscribe);
+      const unsubComments = onCommentEvent(id, (event) => {
+        const data = JSON.stringify({
+          sourceSessionId: event.sourceSessionId,
+          type: event.type,
+          payload: event.payload,
+        });
+        raw.write(`event: comment\ndata: ${data}\n\n`);
+      });
+
+      req.raw.on("close", () => {
+        unsubDiagram();
+        unsubComments();
+      });
     });
 
     // Create a diagram
@@ -208,6 +222,9 @@ export async function registerDiagramRoutes(app: FastifyInstance) {
       await db.update(diagrams).set(updates).where(eq(diagrams.id, id));
       const sessionId = (req as any).sessionId as string;
       emitDiagramUpdate({ diagramId: id, sourceSessionId: sessionId });
+      if (amlContent !== undefined) {
+        setTimeout(() => cleanupOrphanedThreads(id, amlContent), 0);
+      }
       return db.select().from(diagrams).where(eq(diagrams.id, id)).get();
     });
 

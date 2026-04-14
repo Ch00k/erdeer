@@ -11,6 +11,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { generateId } from "../auth/session.js";
 import { requireTokenAuth } from "../auth/token.js";
+import { cleanupOrphanedThreads } from "../comments/cleanup.js";
 import { db } from "../db/connection.js";
 import { diagrams, teamMembers, teams } from "../db/schema.js";
 import { emitDiagramListChanged, emitDiagramUpdate, getAffectedUserIds } from "../events.js";
@@ -203,6 +204,9 @@ function createMcpServer(userId: string): McpServer {
 
       await db.update(diagrams).set(updates).where(eq(diagrams.id, id));
       emitDiagramUpdate({ diagramId: id, sourceSessionId: null });
+      if (amlContent !== undefined) {
+        setTimeout(() => cleanupOrphanedThreads(id, amlContent), 0);
+      }
       const updated = await db.select().from(diagrams).where(eq(diagrams.id, id)).get();
       return {
         content: [{ type: "text" as const, text: JSON.stringify(updated, null, 2) }],

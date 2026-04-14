@@ -56,3 +56,24 @@ diagrams
   team_id text nullable -> teams(id)
   created_at integer | Unix epoch seconds
   updated_at integer | Unix epoch seconds
+
+comment_threads | Threaded comments anchored to diagrams, entities, or columns
+  id text pk
+  diagram_id text -> diagrams(id)
+  anchor_type text check(`anchor_type IN ('diagram', 'entity', 'column')`)
+  anchor_entity text nullable | Entity name when anchored to entity or column
+  anchor_column text nullable | Column name when anchored to column
+  resolved_at integer nullable | Unix epoch seconds
+  resolved_by text nullable -> users(id)
+  created_by text -> users(id)
+  updated_by text -> users(id)
+  created_at integer | Unix epoch seconds
+  updated_at integer | Unix epoch seconds
+
+comments | Individual comments within a thread
+  id text pk
+  thread_id text -> comment_threads(id)
+  user_id text -> users(id)
+  body text
+  created_at integer | Unix epoch seconds
+  updated_at integer | Unix epoch seconds

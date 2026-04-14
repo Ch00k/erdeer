@@ -1,3 +1,5 @@
+import type { CommentThread, ThreadComment } from "./types.js";
+
 export interface User {
   id: string;
   email: string;
@@ -171,4 +173,76 @@ export async function createToken(name: string): Promise<CreatedToken> {
 
 export async function revokeToken(id: string): Promise<void> {
   await request(`/api/tokens/${id}`, { method: "DELETE" });
+}
+
+// Comment Threads
+
+export async function fetchThreads(diagramId: string): Promise<CommentThread[]> {
+  return request<CommentThread[]>(`/api/diagrams/${diagramId}/threads`);
+}
+
+export async function createThread(
+  diagramId: string,
+  data: {
+    anchorType: "diagram" | "entity" | "column";
+    anchorEntity?: string;
+    anchorColumn?: string;
+    body: string;
+  },
+): Promise<CommentThread> {
+  return request<CommentThread>(`/api/diagrams/${diagramId}/threads`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function resolveThread(
+  diagramId: string,
+  threadId: string,
+  resolved: boolean,
+): Promise<CommentThread> {
+  return request<CommentThread>(`/api/diagrams/${diagramId}/threads/${threadId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ resolved }),
+  });
+}
+
+export async function deleteThread(diagramId: string, threadId: string): Promise<void> {
+  await request(`/api/diagrams/${diagramId}/threads/${threadId}`, { method: "DELETE" });
+}
+
+export async function addComment(
+  diagramId: string,
+  threadId: string,
+  body: string,
+): Promise<ThreadComment> {
+  return request<ThreadComment>(`/api/diagrams/${diagramId}/threads/${threadId}/comments`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+}
+
+export async function editComment(
+  diagramId: string,
+  threadId: string,
+  commentId: string,
+  body: string,
+): Promise<ThreadComment> {
+  return request<ThreadComment>(
+    `/api/diagrams/${diagramId}/threads/${threadId}/comments/${commentId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ body }),
+    },
+  );
+}
+
+export async function deleteComment(
+  diagramId: string,
+  threadId: string,
+  commentId: string,
+): Promise<void> {
+  await request(`/api/diagrams/${diagramId}/threads/${threadId}/comments/${commentId}`, {
+    method: "DELETE",
+  });
 }

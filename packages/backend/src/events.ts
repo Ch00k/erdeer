@@ -55,3 +55,30 @@ export function onDiagramListChanged(
   emitter.on(eventName, listener);
   return () => emitter.off(eventName, listener);
 }
+
+export interface CommentEvent {
+  diagramId: string;
+  sourceSessionId: string | null;
+  type:
+    | "thread:created"
+    | "thread:resolved"
+    | "thread:unresolved"
+    | "thread:deleted"
+    | "comment:created"
+    | "comment:updated"
+    | "comment:deleted";
+  payload: Record<string, unknown>;
+}
+
+export function emitCommentEvent(event: CommentEvent) {
+  emitter.emit(`diagram:${event.diagramId}:comments`, event);
+}
+
+export function onCommentEvent(
+  diagramId: string,
+  listener: (event: CommentEvent) => void,
+): () => void {
+  const eventName = `diagram:${diagramId}:comments`;
+  emitter.on(eventName, listener);
+  return () => emitter.off(eventName, listener);
+}
