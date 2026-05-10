@@ -15,6 +15,16 @@ export async function requireAuth(req: FastifyRequest, reply: FastifyReply) {
   }
 
   (req as any).userId = result.user.id;
-  (req as any).userRole = result.user.role;
+  (req as any).sessionId = sessionId;
+}
+
+export async function optionalAuth(req: FastifyRequest) {
+  const sessionId = req.cookies.session;
+  if (!sessionId) return;
+
+  const result = await validateSession(sessionId);
+  if (!result) return;
+
+  (req as any).userId = result.user.id;
   (req as any).sessionId = sessionId;
 }

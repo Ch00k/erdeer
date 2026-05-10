@@ -32,7 +32,7 @@ app.get("/health", async () => {
 const port = Number(process.env.PORT) || 3001;
 const baseUrl = process.env.BASE_URL || "http://localhost:7000";
 
-if (process.env.DEV_MODE) {
+if (process.env.DEV_AUTO_LOGIN) {
   const { ensureDevSession } = await import("./auth/dev.js");
   const devSessionId = await ensureDevSession();
   app.addHook("onRequest", async (req, reply) => {
@@ -46,7 +46,7 @@ if (process.env.DEV_MODE) {
       });
     }
   });
-  app.log.info("Dev mode: auto-login enabled");
+  app.log.info("Dev auto-login enabled");
 }
 
 const providers = createProviders(baseUrl);

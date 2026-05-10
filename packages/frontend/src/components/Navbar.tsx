@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { deleteAccount } from "../api.js";
 import { useAuth } from "../auth.js";
+import { useTheme } from "../theme.js";
 import { ConfirmDialog } from "./ConfirmDialog.js";
 import styles from "./Navbar.module.css";
 
@@ -11,6 +12,7 @@ interface NavbarProps {
 
 export function Navbar({ center }: NavbarProps) {
   const { user } = useAuth();
+  const { resolvedTheme, toggle } = useTheme();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<"signOut" | "deleteAccount" | null>(null);
@@ -63,6 +65,33 @@ export function Navbar({ center }: NavbarProps) {
         </a>
         {center && <div className={styles.center}>{center}</div>}
         <div className={styles.right}>
+          <button
+            className={styles.themeToggle}
+            onClick={toggle}
+            title={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {resolvedTheme === "dark" ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
+                <path
+                  d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            )}
+          </button>
           {user ? (
             <div className={styles.userMenu} ref={menuRef}>
               <button className={styles.userButton} onClick={() => setMenuOpen(!menuOpen)}>

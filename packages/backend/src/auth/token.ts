@@ -60,5 +60,4 @@ export async function requireTokenAuth(req: FastifyRequest, reply: FastifyReply)
     .run();
 
   (req as any).userId = result.user.id;
-  (req as any).userRole = result.user.role;
 }

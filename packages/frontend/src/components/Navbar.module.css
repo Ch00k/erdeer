@@ -30,7 +30,27 @@
 .right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+}
+
+.themeToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+.themeToggle:hover {
+  background: var(--color-canvas-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
 }
 
 .userMenu {
@@ -70,7 +90,7 @@
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-menu);
   min-width: 160px;
   z-index: 100;
   overflow: hidden;
@@ -95,11 +115,11 @@
 }
 
 .menuItemDanger {
-  color: #dc2626;
+  color: var(--color-danger);
 }
 
 .menuItemDanger:hover {
-  background-color: #fef2f2;
+  background-color: var(--color-danger-bg);
 }
 
 .menuDivider {

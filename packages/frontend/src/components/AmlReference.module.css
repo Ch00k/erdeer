@@ -3,7 +3,6 @@
   top: 0;
   right: 0;
   bottom: 0;
-  width: 25vw;
   min-width: 280px;
   max-width: 100%;
   display: flex;
@@ -11,7 +10,16 @@
   background: var(--color-bg);
   border-left: 1px solid var(--color-border);
   z-index: 10;
-  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-panel);
+}
+
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  z-index: 11;
 }
 
 .header {

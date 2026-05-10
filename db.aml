@@ -8,7 +8,6 @@ users
   email text unique
   name text
   avatar_url text nullable
-  role text=admin check(`role IN ('admin', 'user')`)
   created_at integer | Unix epoch seconds
   updated_at integer | Unix epoch seconds
 
@@ -33,10 +32,18 @@ teams
 team_members
   team_id text -> teams(id)
   user_id text -> users(id)
+  role text=member check(`role IN ('owner', 'member')`)
+  created_at integer | Unix epoch seconds
+  updated_at integer | Unix epoch seconds
 
-role_permissions | Default-allow: if no permissions defined for a role, all are granted
-  role text
-  permission text
+team_invitations | Pending invitations to join a team, addressed by email
+  id text pk
+  team_id text -> teams(id)
+  invited_email text
+  invited_by text -> users(id)
+  status text=pending check(`status IN ('pending', 'accepted', 'declined')`)
+  created_at integer | Unix epoch seconds
+  updated_at integer | Unix epoch seconds
 
 api_tokens | Bearer tokens for API and MCP access, prefixed with erd_
   id text pk
@@ -54,5 +61,6 @@ diagrams
   layout text | JSON mapping table names to {x, y} positions
   owner_user_id text -> users(id)
   team_id text nullable -> teams(id)
+  visibility text=private check(`visibility IN ('private', 'public')`) | public diagrams are readable by anyone with the URL
   created_at integer | Unix epoch seconds
   updated_at integer | Unix epoch seconds

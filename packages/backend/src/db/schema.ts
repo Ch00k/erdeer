@@ -10,18 +10,13 @@ const timestamps = {
     .$defaultFn(() => new Date()),
 };
 
-export const users = sqliteTable(
-  "users",
-  {
-    id: text("id").primaryKey(),
-    email: text("email").notNull().unique(),
-    name: text("name").notNull(),
-    avatarUrl: text("avatar_url"),
-    role: text("role").notNull().default("admin"),
-    ...timestamps,
-  },
-  (table) => [check("users_role_check", sql`${table.role} IN ('admin', 'user')`)],
-);
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  name: text("name").notNull(),
+  avatarUrl: text("avatar_url"),
+  ...timestamps,
+});
 
 export const oauthAccounts = sqliteTable("oauth_accounts", {
   provider: text("provider").notNull(),
@@ -46,19 +41,42 @@ export const teams = sqliteTable("teams", {
   ...timestamps,
 });
 
-export const teamMembers = sqliteTable("team_members", {
-  teamId: text("team_id")
-    .notNull()
-    .references(() => teams.id),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id),
-});
+export const teamMembers = sqliteTable(
+  "team_members",
+  {
+    teamId: text("team_id")
+      .notNull()
+      .references(() => teams.id),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    role: text("role").notNull().default("member"),
+    ...timestamps,
+  },
+  (table) => [check("team_members_role_check", sql`${table.role} IN ('owner', 'member')`)],
+);
 
-export const rolePermissions = sqliteTable("role_permissions", {
-  role: text("role").notNull(),
-  permission: text("permission").notNull(),
-});
+export const teamInvitations = sqliteTable(
+  "team_invitations",
+  {
+    id: text("id").primaryKey(),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => teams.id),
+    invitedEmail: text("invited_email").notNull(),
+    invitedBy: text("invited_by")
+      .notNull()
+      .references(() => users.id),
+    status: text("status").notNull().default("pending"),
+    ...timestamps,
+  },
+  (table) => [
+    check(
+      "team_invitations_status_check",
+      sql`${table.status} IN ('pending', 'accepted', 'declined')`,
+    ),
+  ],
+);
 
 export const apiTokens = sqliteTable("api_tokens", {
   id: text("id").primaryKey(),
@@ -71,14 +89,21 @@ export const apiTokens = sqliteTable("api_tokens", {
   ...timestamps,
 });
 
-export const diagrams = sqliteTable("diagrams", {
-  id: text("id").primaryKey(),
-  title: text("title").notNull(),
-  amlContent: text("aml_content").notNull().default(""),
-  layout: text("layout").notNull().default("{}"),
-  ownerUserId: text("owner_user_id")
-    .notNull()
-    .references(() => users.id),
-  teamId: text("team_id").references(() => teams.id),
-  ...timestamps,
-});
+export const diagrams = sqliteTable(
+  "diagrams",
+  {
+    id: text("id").primaryKey(),
+    title: text("title").notNull(),
+    amlContent: text("aml_content").notNull().default(""),
+    layout: text("layout").notNull().default("{}"),
+    ownerUserId: text("owner_user_id")
+      .notNull()
+      .references(() => users.id),
+    teamId: text("team_id").references(() => teams.id),
+    visibility: text("visibility").notNull().default("private"),
+    ...timestamps,
+  },
+  (table) => [
+    check("diagrams_visibility_check", sql`${table.visibility} IN ('private', 'public')`),
+  ],
+);

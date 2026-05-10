@@ -12,7 +12,6 @@ export async function ensureDevSession(): Promise<string> {
       id: DEV_USER_ID,
       email: "dev@localhost",
       name: "Dev User",
-      role: "admin",
     });
   }
 

@@ -149,6 +149,6 @@
 }
 
 .deleteButton:hover {
-  color: #dc2626;
-  border-color: #dc2626;
+  color: var(--color-danger);
+  border-color: var(--color-danger);
 }

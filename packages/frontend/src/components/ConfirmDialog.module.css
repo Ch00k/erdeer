@@ -1,7 +1,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--color-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -11,7 +11,7 @@
 .dialog {
   background: var(--color-bg);
   border-radius: 8px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-modal);
   padding: 24px;
   width: 400px;
   max-width: 90vw;
@@ -68,12 +68,12 @@
   padding: 8px 16px;
   border: none;
   border-radius: var(--radius);
-  background: #dc2626;
+  background: var(--color-danger);
   color: white;
   font-size: 14px;
   cursor: pointer;
 }
 
 .dangerButton:hover {
-  background: #b91c1c;
+  background: var(--color-danger-strong);
 }

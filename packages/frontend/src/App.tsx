@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./auth.js";
 import { DashboardPage } from "./pages/DashboardPage.js";
 import { DesignerPage } from "./pages/DesignerPage.js";
 import { LoginPage } from "./pages/LoginPage.js";
+import { SandboxPage } from "./pages/SandboxPage.js";
 import { SchemaPage } from "./pages/SchemaPage.js";
 import { TeamsPage } from "./pages/TeamsPage.js";
 import { TokensPage } from "./pages/TokensPage.js";
@@ -60,14 +61,8 @@ export function App() {
             }
           />
           <Route path="/schema" element={<SchemaPage />} />
-          <Route
-            path="/diagrams/:id"
-            element={
-              <ProtectedRoute>
-                <DesignerPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/sandbox" element={<SandboxPage />} />
+          <Route path="/diagrams/:id" element={<DesignerPage />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

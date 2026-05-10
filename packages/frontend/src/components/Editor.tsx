@@ -1,9 +1,8 @@
-import { monaco as amlMonaco } from "@azimutt/aml";
 import MonacoEditor, { type OnMount } from "@monaco-editor/react";
 import { useEffect, useRef, useState } from "react";
 import styles from "./Editor.module.css";
-
-const AML_LANGUAGE_ID = "aml";
+import { AML_LANGUAGE_ID, useMonaco } from "./monacoContext.js";
+import { AUTO_THEME_ID, COMMUNITY_THEMES } from "./monacoThemes.js";
 
 interface EditorProps {
   value: string;
@@ -22,8 +21,8 @@ export function Editor({
 }: EditorProps) {
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const [wordWrap, setWordWrap] = useState(true);
+  const { appliedTheme, selection, setSelection } = useMonaco();
 
-  // Keep editor in sync with external value changes (e.g. loading a diagram)
   useEffect(() => {
     const editor = editorRef.current;
     if (editor && editor.getValue() !== value) {
@@ -38,17 +37,8 @@ export function Editor({
     }
   }, [wordWrap]);
 
-  const handleMount: OnMount = (editor, monaco) => {
+  const handleMount: OnMount = (editor) => {
     editorRef.current = editor;
-
-    if (!monaco.languages.getLanguages().some((l: { id: string }) => l.id === AML_LANGUAGE_ID)) {
-      monaco.languages.register({ id: AML_LANGUAGE_ID });
-      monaco.languages.setMonarchTokensProvider(AML_LANGUAGE_ID, amlMonaco.language() as any);
-      monaco.languages.registerCompletionItemProvider(
-        AML_LANGUAGE_ID,
-        amlMonaco.completion() as any,
-      );
-    }
   };
 
   return (
@@ -56,6 +46,19 @@ export function Editor({
       <div className={styles.header}>
         <span>AML</span>
         <div className={styles.headerActions}>
+          <select
+            className={styles.themeSelect}
+            value={selection}
+            onChange={(e) => setSelection(e.target.value)}
+            title="Editor theme"
+          >
+            <option value={AUTO_THEME_ID}>Auto (follow app)</option>
+            {COMMUNITY_THEMES.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
           {onToggleReference && (
             <button
               className={`${styles.headerButton} ${referenceOpen ? styles.headerButtonActive : ""}`}
@@ -93,6 +96,7 @@ export function Editor({
       <div className={styles.editorWrapper}>
         <MonacoEditor
           language={AML_LANGUAGE_ID}
+          theme={appliedTheme}
           value={value}
           onChange={(v) => onChange?.(v ?? "")}
           onMount={handleMount}

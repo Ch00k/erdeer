@@ -5,6 +5,12 @@
   overflow: hidden;
 }
 
+.titleArea {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .titleWrapper {
   display: flex;
   align-items: center;
@@ -58,6 +64,39 @@
   opacity: 0;
 }
 
+.sandboxBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius);
+  background: var(--color-canvas-bg);
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+}
+
+.resetButton {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.resetButton:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
 .workspace {
   display: flex;
   flex: 1;
@@ -77,61 +116,4 @@
   position: relative;
   overflow: hidden;
   background-color: var(--color-canvas-bg);
-}
-
-.loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  color: var(--color-text-muted);
-}
-
-.titleArea {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.visibilityToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  border-radius: var(--radius);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-family: var(--font-sans);
-  transition:
-    border-color 0.15s,
-    background-color 0.15s,
-    color 0.15s;
-}
-
-.visibilityToggle:hover {
-  border-color: var(--color-primary);
-  color: var(--color-text);
-}
-
-.visibilityPublic {
-  color: var(--color-primary);
-  border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
-  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
-}
-
-.visibilityBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  border-radius: var(--radius);
-  background: var(--color-canvas-bg);
-  color: var(--color-text-muted);
-  font-family: var(--font-sans);
 }

@@ -6,68 +6,59 @@
 }
 
 .content {
-  display: flex;
   flex: 1;
-  max-width: 960px;
+  max-width: 640px;
   width: 100%;
   margin: 0 auto;
   padding: 32px;
-  gap: 32px;
 }
 
-.sidebar {
-  width: 280px;
-  flex-shrink: 0;
-}
-
-.main {
-  flex: 1;
-  min-width: 0;
-}
-
-.sectionTitle {
-  font-size: 16px;
+.heading {
+  font-size: 18px;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin-bottom: 4px;
 }
 
-.teamList {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 16px;
+.description {
+  color: var(--color-text-muted);
+  font-size: 14px;
+  margin-bottom: 24px;
 }
 
-.teamItem {
+.subheading {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.invitationSection {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.invitationItem {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  background: none;
-  cursor: pointer;
-  text-align: left;
-  font-size: 14px;
-  width: 100%;
+  padding: 8px 0;
 }
 
-.teamItem:hover {
-  background: var(--color-bg);
+.invitationItem + .invitationItem {
+  border-top: 1px solid var(--color-border);
 }
 
-.teamItemActive {
-  background: var(--color-bg);
-  border-color: var(--color-border);
-}
-
-.teamName {
-  font-weight: 500;
+.invitationActions {
+  display: flex;
+  gap: 8px;
 }
 
 .createForm {
   display: flex;
   gap: 8px;
+  margin-bottom: 24px;
 }
 
 .input {
@@ -86,24 +77,7 @@
   border-color: var(--color-primary);
 }
 
-.select {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  font-size: 14px;
-  font-family: var(--font-sans);
-  background: var(--color-bg);
-  color: var(--color-text);
-  outline: none;
-}
-
-.select:focus {
-  border-color: var(--color-primary);
-}
-
-.createButton,
-.addButton {
+.primaryButton {
   padding: 8px 16px;
   border: none;
   border-radius: var(--radius);
@@ -114,9 +88,78 @@
   white-space: nowrap;
 }
 
-.createButton:hover,
-.addButton:hover {
+.primaryButton:hover {
   opacity: 0.9;
+}
+
+.primaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loading,
+.empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 48px 0;
+}
+
+.teamList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.teamItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  font-size: 14px;
+  width: 100%;
+}
+
+.teamItem:hover {
+  border-color: var(--color-text-muted);
+}
+
+.teamItemActive {
+  border-color: var(--color-primary);
+}
+
+.teamItemMain {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.teamName {
+  font-weight: 500;
+}
+
+.chevron {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+.detail {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
 }
 
 .memberList {
@@ -130,8 +173,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  background: var(--color-bg);
+  padding: 8px 12px;
+  background: var(--color-canvas-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
 }
@@ -147,7 +190,17 @@
   margin-right: 8px;
 }
 
-.removeButton {
+.roleBadge {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  padding: 2px 6px;
+  border-radius: var(--radius);
+  margin-left: 4px;
+}
+
+.outlineButton {
   padding: 4px 10px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
@@ -155,26 +208,77 @@
   color: var(--color-text-muted);
   font-size: 12px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
-.removeButton:hover {
-  color: #dc2626;
-  border-color: #dc2626;
+.outlineButton:hover {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.acceptButton {
+  padding: 4px 10px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--color-primary);
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.acceptButton:hover {
+  opacity: 0.9;
 }
 
 .addForm {
   display: flex;
   gap: 8px;
+  margin-top: 16px;
 }
 
 .error {
-  color: #dc2626;
+  color: var(--color-danger);
   font-size: 13px;
   margin-top: 8px;
 }
 
-.placeholder {
+.pendingList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.pendingItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--color-canvas-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+
+.detailFooter {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.leaveButton {
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
   color: var(--color-text-muted);
-  padding: 64px 0;
-  text-align: center;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.leaveButton:hover {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
 }

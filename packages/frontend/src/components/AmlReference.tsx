@@ -1,12 +1,46 @@
+import { useCallback, useEffect, useState } from "react";
 import styles from "./AmlReference.module.css";
+import { AML_LANGUAGE_ID, useMonaco } from "./monacoContext.js";
+import { getThemeColors } from "./monacoThemes.js";
+import { ResizeHandle } from "./ResizeHandle.js";
+
+const WIDTH_STORAGE_KEY = "erdeer_aml_reference_width";
+const MIN_WIDTH = 280;
+const MAX_WIDTH = 800;
+
+function readStoredWidth(): number {
+  try {
+    const saved = localStorage.getItem(WIDTH_STORAGE_KEY);
+    if (saved) {
+      const n = Number(saved);
+      if (Number.isFinite(n)) return Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, n));
+    }
+  } catch {}
+  return Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, Math.round(window.innerWidth * 0.25)));
+}
 
 interface AmlReferenceProps {
   onClose: () => void;
 }
 
 export function AmlReference({ onClose }: AmlReferenceProps) {
+  const [width, setWidth] = useState<number>(readStoredWidth);
+
+  const handleResize = useCallback((deltaX: number) => {
+    setWidth((w) => Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, w - deltaX)));
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(WIDTH_STORAGE_KEY, String(width));
+    } catch {}
+  }, [width]);
+
   return (
-    <div className={styles.panel}>
+    <div className={styles.panel} style={{ width }}>
+      <div className={styles.resizeHandle}>
+        <ResizeHandle onResize={handleResize} />
+      </div>
       <div className={styles.header}>
         <span>AML Reference</span>
         <button className={styles.closeButton} onClick={onClose} title="Close">
@@ -188,7 +222,42 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function Code({ children }: { children: string }) {
-  return <pre className={styles.code}>{children}</pre>;
+  const { monaco, appliedTheme } = useMonaco();
+  const [html, setHtml] = useState<string | null>(null);
+  const themeColors = getThemeColors(appliedTheme);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-colorize when global Monaco theme changes
+  useEffect(() => {
+    if (!monaco) return;
+    let cancelled = false;
+    monaco.editor.colorize(children, AML_LANGUAGE_ID, { tabSize: 2 }).then((result) => {
+      if (!cancelled) setHtml(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [monaco, appliedTheme, children]);
+
+  const style = {
+    background: themeColors?.background,
+    color: themeColors?.foreground,
+  };
+
+  if (html) {
+    return (
+      <pre
+        className={styles.code}
+        style={style}
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted output from monaco.editor.colorize
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    );
+  }
+  return (
+    <pre className={styles.code} style={style}>
+      {children}
+    </pre>
+  );
 }
 
 function C({ children }: { children: React.ReactNode }) {

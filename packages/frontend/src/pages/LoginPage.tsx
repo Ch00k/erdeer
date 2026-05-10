@@ -41,6 +41,10 @@ export function LoginPage() {
               )}
             </div>
           )}
+          <div className={styles.divider}>or</div>
+          <a href="/sandbox" className={styles.sandboxLink}>
+            Try without an account
+          </a>
         </div>
       </div>
       <Footer />

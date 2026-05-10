@@ -66,7 +66,6 @@ Authenticate with a bearer token (`Authorization: Bearer erd_...`). Tokens are m
 | `PORT` | Server port | `3001` |
 | `HOST` | Bind address | `127.0.0.1` |
 | `DATABASE_PATH` | SQLite database path | `data/db.sqlite` |
-| `ALLOWED_DOMAINS` | Comma-separated email domains to restrict signups | (allow all) |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth | |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth | |
 | `GITLAB_CLIENT_ID` / `GITLAB_CLIENT_SECRET` | GitLab OAuth | |

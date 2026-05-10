@@ -1,7 +1,7 @@
 import type {} from "@fastify/cookie";
 import { and, eq, isNotNull, isNull } from "drizzle-orm";
-import type { FastifyInstance } from "fastify";
-import { requireAuth } from "../auth/middleware.js";
+import type { FastifyInstance, FastifyRequest } from "fastify";
+import { optionalAuth, requireAuth } from "../auth/middleware.js";
 import { generateId } from "../auth/session.js";
 import { db } from "../db/connection.js";
 import { diagrams, teamMembers } from "../db/schema.js";
@@ -13,7 +13,75 @@ import {
   onDiagramUpdate,
 } from "../events.js";
 
+type Diagram = typeof diagrams.$inferSelect;
+
+function userCanEdit(diagram: Diagram, userId: string | undefined): boolean {
+  if (!userId) return false;
+  if (diagram.ownerUserId === userId) return true;
+  if (!diagram.teamId) return false;
+  const membership = db
+    .select()
+    .from(teamMembers)
+    .where(and(eq(teamMembers.teamId, diagram.teamId), eq(teamMembers.userId, userId)))
+    .get();
+  return !!membership;
+}
+
 export async function registerDiagramRoutes(app: FastifyInstance) {
+  // Public-readable: get a single diagram (auth optional; public visibility allows anon read)
+  app.get("/api/diagrams/:id", { onRequest: optionalAuth }, async (req: FastifyRequest, reply) => {
+    const userId = (req as any).userId as string | undefined;
+    const { id } = req.params as { id: string };
+
+    const diagram = db.select().from(diagrams).where(eq(diagrams.id, id)).get();
+    if (!diagram) {
+      return reply.status(404).send({ error: "Diagram not found" });
+    }
+
+    const canEdit = userCanEdit(diagram, userId);
+    if (!canEdit && diagram.visibility !== "public") {
+      return reply.status(404).send({ error: "Diagram not found" });
+    }
+
+    return { ...diagram, canEdit };
+  });
+
+  // Public-readable: SSE for a single diagram
+  app.get(
+    "/api/diagrams/:id/events",
+    { onRequest: optionalAuth },
+    async (req: FastifyRequest, reply) => {
+      const userId = (req as any).userId as string | undefined;
+      const sessionId = (req as any).sessionId as string | undefined;
+      const { id } = req.params as { id: string };
+
+      const diagram = db.select().from(diagrams).where(eq(diagrams.id, id)).get();
+      if (!diagram) {
+        return reply.status(404).send({ error: "Diagram not found" });
+      }
+
+      const canEdit = userCanEdit(diagram, userId);
+      if (!canEdit && diagram.visibility !== "public") {
+        return reply.status(404).send({ error: "Diagram not found" });
+      }
+
+      const raw = reply.raw;
+      raw.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      });
+      raw.write(`event: connected\ndata: ${JSON.stringify({ sessionId: sessionId ?? null })}\n\n`);
+
+      const unsubscribe = onDiagramUpdate(id, (event) => {
+        const data = JSON.stringify({ sourceSessionId: event.sourceSessionId });
+        raw.write(`event: updated\ndata: ${data}\n\n`);
+      });
+
+      req.raw.on("close", unsubscribe);
+    },
+  );
+
   await app.register(async (scoped) => {
     scoped.addHook("onRequest", requireAuth);
 
@@ -30,7 +98,7 @@ export async function registerDiagramRoutes(app: FastifyInstance) {
     // List team diagrams (for all teams the user belongs to)
     scoped.get("/api/diagrams/team", async (req) => {
       const userId = (req as any).userId as string;
-      const memberships = await db
+      const memberships = db
         .select({ teamId: teamMembers.teamId })
         .from(teamMembers)
         .where(eq(teamMembers.userId, userId))
@@ -66,84 +134,13 @@ export async function registerDiagramRoutes(app: FastifyInstance) {
       req.raw.on("close", unsubscribe);
     });
 
-    // Get a single diagram
-    scoped.get("/api/diagrams/:id", async (req, reply) => {
-      const userId = (req as any).userId as string;
-      const { id } = req.params as { id: string };
-
-      const diagram = await db.select().from(diagrams).where(eq(diagrams.id, id)).get();
-
-      if (!diagram) {
-        return reply.status(404).send({ error: "Diagram not found" });
-      }
-
-      // Check access: owner or team member
-      if (diagram.ownerUserId !== userId) {
-        if (diagram.teamId) {
-          const membership = await db
-            .select()
-            .from(teamMembers)
-            .where(and(eq(teamMembers.teamId, diagram.teamId), eq(teamMembers.userId, userId)))
-            .get();
-          if (!membership) {
-            return reply.status(403).send({ error: "Access denied" });
-          }
-        } else {
-          return reply.status(403).send({ error: "Access denied" });
-        }
-      }
-
-      return diagram;
-    });
-
-    // SSE: subscribe to diagram updates
-    scoped.get("/api/diagrams/:id/events", async (req, reply) => {
-      const userId = (req as any).userId as string;
-      const sessionId = (req as any).sessionId as string;
-      const { id } = req.params as { id: string };
-
-      const diagram = await db.select().from(diagrams).where(eq(diagrams.id, id)).get();
-      if (!diagram) {
-        return reply.status(404).send({ error: "Diagram not found" });
-      }
-
-      if (diagram.ownerUserId !== userId) {
-        if (diagram.teamId) {
-          const membership = await db
-            .select()
-            .from(teamMembers)
-            .where(and(eq(teamMembers.teamId, diagram.teamId), eq(teamMembers.userId, userId)))
-            .get();
-          if (!membership) {
-            return reply.status(403).send({ error: "Access denied" });
-          }
-        } else {
-          return reply.status(403).send({ error: "Access denied" });
-        }
-      }
-
-      const raw = reply.raw;
-      raw.writeHead(200, {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      });
-      raw.write(`event: connected\ndata: ${JSON.stringify({ sessionId })}\n\n`);
-
-      const unsubscribe = onDiagramUpdate(id, (event) => {
-        const data = JSON.stringify({ sourceSessionId: event.sourceSessionId });
-        raw.write(`event: updated\ndata: ${data}\n\n`);
-      });
-
-      req.raw.on("close", unsubscribe);
-    });
-
     // Create a diagram
     scoped.post("/api/diagrams", async (req) => {
       const userId = (req as any).userId as string;
-      const { title, amlContent, teamId } = req.body as {
+      const { title, amlContent, layout, teamId } = req.body as {
         title: string;
         amlContent?: string;
+        layout?: string;
         teamId?: string;
       };
 
@@ -153,13 +150,14 @@ export async function registerDiagramRoutes(app: FastifyInstance) {
         id,
         title,
         amlContent: amlContent ?? "",
+        layout: layout ?? "{}",
         ownerUserId: userId,
         teamId: teamId ?? null,
         createdAt: now,
         updatedAt: now,
       });
 
-      const created = await db.select().from(diagrams).where(eq(diagrams.id, id)).get();
+      const created = db.select().from(diagrams).where(eq(diagrams.id, id)).get();
       const sessionId = (req as any).sessionId as string;
       const affectedUsers = await getAffectedUserIds(userId, teamId ?? null);
       for (const uid of affectedUsers) {
@@ -172,38 +170,35 @@ export async function registerDiagramRoutes(app: FastifyInstance) {
     scoped.put("/api/diagrams/:id", async (req, reply) => {
       const userId = (req as any).userId as string;
       const { id } = req.params as { id: string };
-      const { title, amlContent, layout } = req.body as {
+      const { title, amlContent, layout, visibility } = req.body as {
         title?: string;
         amlContent?: string;
         layout?: string;
+        visibility?: "private" | "public";
       };
 
-      const diagram = await db.select().from(diagrams).where(eq(diagrams.id, id)).get();
-
+      const diagram = db.select().from(diagrams).where(eq(diagrams.id, id)).get();
       if (!diagram) {
         return reply.status(404).send({ error: "Diagram not found" });
       }
 
-      // Check access: owner or team member
-      if (diagram.ownerUserId !== userId) {
-        if (diagram.teamId) {
-          const membership = await db
-            .select()
-            .from(teamMembers)
-            .where(and(eq(teamMembers.teamId, diagram.teamId), eq(teamMembers.userId, userId)))
-            .get();
-          if (!membership) {
-            return reply.status(403).send({ error: "Access denied" });
-          }
-        } else {
-          return reply.status(403).send({ error: "Access denied" });
-        }
+      const isOwner = diagram.ownerUserId === userId;
+      if (!userCanEdit(diagram, userId)) {
+        return reply.status(403).send({ error: "Access denied" });
       }
 
-      const updates: Record<string, any> = { updatedAt: new Date() };
+      if (visibility !== undefined && !isOwner) {
+        return reply.status(403).send({ error: "Only the owner can change visibility" });
+      }
+      if (visibility !== undefined && visibility !== "private" && visibility !== "public") {
+        return reply.status(400).send({ error: "Invalid visibility" });
+      }
+
+      const updates: Record<string, unknown> = { updatedAt: new Date() };
       if (title !== undefined) updates.title = title;
       if (amlContent !== undefined) updates.amlContent = amlContent;
       if (layout !== undefined) updates.layout = layout;
+      if (visibility !== undefined) updates.visibility = visibility;
 
       await db.update(diagrams).set(updates).where(eq(diagrams.id, id));
       const sessionId = (req as any).sessionId as string;
@@ -216,7 +211,7 @@ export async function registerDiagramRoutes(app: FastifyInstance) {
       const userId = (req as any).userId as string;
       const { id } = req.params as { id: string };
 
-      const diagram = await db.select().from(diagrams).where(eq(diagrams.id, id)).get();
+      const diagram = db.select().from(diagrams).where(eq(diagrams.id, id)).get();
 
       if (!diagram) {
         return reply.status(404).send({ error: "Diagram not found" });

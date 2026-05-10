@@ -23,7 +23,7 @@ const transports = new Map<string, StreamableHTTPServerTransport>();
 function createMcpServer(userId: string): McpServer {
   const server = new McpServer({
     name: "erdeer",
-    version: "0.0.1",
+    version: "0.1.0",
   });
 
   // Resource: AML spec

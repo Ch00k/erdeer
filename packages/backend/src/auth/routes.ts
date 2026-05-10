@@ -34,7 +34,6 @@ function consumeState(state: string) {
 interface ProviderUserInfo {
   id: string;
   email: string;
-  emails: string[];
   name: string;
   avatarUrl: string | null;
 }
@@ -52,13 +51,11 @@ async function fetchGitHubUser(accessToken: string): Promise<ProviderUserInfo> {
   const emails: Array<{ email: string; primary: boolean; verified: boolean }> =
     await emailsRes.json();
   const verified = emails.filter((e) => e.verified);
-  const allEmails = verified.map((e) => e.email);
-  const primaryEmail = verified.find((e) => e.primary)?.email ?? allEmails[0];
+  const primaryEmail = verified.find((e) => e.primary)?.email ?? verified[0]?.email;
 
   return {
     id: String(user.id),
     email: primaryEmail,
-    emails: allEmails,
     name: user.name || user.login,
     avatarUrl: user.avatar_url,
   };
@@ -74,54 +71,29 @@ async function fetchGoogleUser(idToken: string): Promise<ProviderUserInfo> {
   return {
     id: claims.sub,
     email: claims.email,
-    emails: [claims.email],
     name: claims.name,
     avatarUrl: claims.picture ?? null,
   };
 }
 
 async function fetchGitLabUser(accessToken: string): Promise<ProviderUserInfo> {
-  const headers = { Authorization: `Bearer ${accessToken}` };
-  const [userRes, emailsRes] = await Promise.all([
-    fetch("https://gitlab.com/api/v4/user", { headers }),
-    fetch("https://gitlab.com/api/v4/user/emails", { headers }),
-  ]);
+  const userRes = await fetch("https://gitlab.com/api/v4/user", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
   const user = await userRes.json();
-  const emailEntries: Array<{ email: string; confirmed_at: string | null }> =
-    await emailsRes.json();
-  const allEmails = emailEntries.filter((e) => e.confirmed_at !== null).map((e) => e.email);
-  if (!allEmails.includes(user.email)) {
-    allEmails.unshift(user.email);
-  }
   return {
     id: String(user.id),
     email: user.email,
-    emails: allEmails,
     name: user.name || user.username,
     avatarUrl: user.avatar_url,
   };
 }
-
-const allowedDomains = process.env.ALLOWED_DOMAINS
-  ? new Set(process.env.ALLOWED_DOMAINS.split(",").map((d) => d.trim().toLowerCase()))
-  : null;
 
 async function findOrCreateUser(
   provider: string,
   providerUserId: string,
   info: ProviderUserInfo,
 ): Promise<string> {
-  if (allowedDomains) {
-    const allowedEmail = info.emails.find((email) => {
-      const domain = email.toLowerCase().split("@")[1];
-      return domain && allowedDomains.has(domain);
-    });
-    if (!allowedEmail) {
-      throw new Error("Email domain not allowed");
-    }
-    info.email = allowedEmail;
-  }
-
   // Check if this OAuth account already exists
   const existing = await db
     .select({ userId: oauthAccounts.userId })

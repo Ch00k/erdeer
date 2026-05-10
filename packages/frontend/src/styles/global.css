@@ -13,11 +13,90 @@
   --color-ix: #3b82f6;
   --color-nl: #6b7280;
 
+  --color-danger: #dc2626;
+  --color-danger-strong: #b91c1c;
+  --color-danger-bg: #fef2f2;
+  --color-success: #166534;
+  --color-success-bg: #f0fdf4;
+  --color-success-border: #bbf7d0;
+
+  --color-overlay: rgba(0, 0, 0, 0.4);
+  --shadow-table: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-menu: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-modal: 0 4px 24px rgba(0, 0, 0, 0.15);
+  --shadow-tooltip: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-panel: -4px 0 12px rgba(0, 0, 0, 0.08);
+
   --font-mono: "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
-  --shadow-table: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
   --radius: 6px;
+}
+
+[data-theme="dark"] {
+  --color-bg: #0f1115;
+  --color-text: #e5e7eb;
+  --color-text-muted: #9ca3af;
+  --color-border: #2a2f3a;
+  --color-canvas-bg: #161a22;
+  --color-table-bg: #1a1f29;
+  --color-table-header: #20262f;
+  --color-primary: #60a5fa;
+  --color-relation: #64748b;
+  --color-pk: #fbbf24;
+  --color-uq: #a78bfa;
+  --color-ix: #60a5fa;
+  --color-nl: #9ca3af;
+
+  --color-danger: #f87171;
+  --color-danger-strong: #ef4444;
+  --color-danger-bg: #2a1416;
+  --color-success: #86efac;
+  --color-success-bg: #102218;
+  --color-success-border: #1f4a32;
+
+  --color-overlay: rgba(0, 0, 0, 0.6);
+  --shadow-table: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-menu: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-modal: 0 4px 24px rgba(0, 0, 0, 0.6);
+  --shadow-tooltip: 0 2px 8px rgba(0, 0, 0, 0.6);
+  --shadow-panel: -4px 0 12px rgba(0, 0, 0, 0.4);
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --color-bg: #0f1115;
+    --color-text: #e5e7eb;
+    --color-text-muted: #9ca3af;
+    --color-border: #2a2f3a;
+    --color-canvas-bg: #161a22;
+    --color-table-bg: #1a1f29;
+    --color-table-header: #20262f;
+    --color-primary: #60a5fa;
+    --color-relation: #64748b;
+    --color-pk: #fbbf24;
+    --color-uq: #a78bfa;
+    --color-ix: #60a5fa;
+    --color-nl: #9ca3af;
+
+    --color-danger: #f87171;
+    --color-danger-strong: #ef4444;
+    --color-danger-bg: #2a1416;
+    --color-success: #86efac;
+    --color-success-bg: #102218;
+    --color-success-border: #1f4a32;
+
+    --color-overlay: rgba(0, 0, 0, 0.6);
+    --shadow-table: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-menu: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-modal: 0 4px 24px rgba(0, 0, 0, 0.6);
+    --shadow-tooltip: 0 2px 8px rgba(0, 0, 0, 0.6);
+    --shadow-panel: -4px 0 12px rgba(0, 0, 0, 0.4);
+
+    color-scheme: dark;
+  }
 }
 
 *,

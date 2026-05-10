@@ -8,6 +8,7 @@ import {
 } from "@xyflow/react";
 import { useMemo } from "react";
 import "@xyflow/react/dist/style.css";
+import { useTheme } from "../theme.js";
 import type { Relation, Schema } from "../types.js";
 import styles from "./Diagram.module.css";
 import { RelationEdge } from "./RelationEdge.js";
@@ -39,9 +40,11 @@ interface DiagramProps {
   schema: Schema;
   nodes: Node<TableNodeData>[];
   onNodesChange: OnNodesChange<Node<TableNodeData>>;
+  readOnly?: boolean;
 }
 
-export function Diagram({ schema, nodes, onNodesChange }: DiagramProps) {
+export function Diagram({ schema, nodes, onNodesChange, readOnly }: DiagramProps) {
+  const { resolvedTheme } = useTheme();
   const edges: Edge[] = useMemo(() => {
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
     return schema.relations.map((rel, i) => {
@@ -73,8 +76,10 @@ export function Diagram({ schema, nodes, onNodesChange }: DiagramProps) {
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
+        colorMode={resolvedTheme}
         fitView
         nodesConnectable={false}
+        nodesDraggable={!readOnly}
         edgesFocusable={false}
         edgesReconnectable={false}
         elementsSelectable={false}
