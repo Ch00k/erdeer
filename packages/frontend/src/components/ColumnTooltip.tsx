@@ -43,20 +43,26 @@ export function ColumnTooltip({ column, side }: ColumnTooltipProps) {
         </div>
       )}
       {uniqueDetails.length > 0 && (
-        <div className={styles.constraintList}>
+        <div className={uniqueDetails.length === 1 ? styles.row : styles.constraintList}>
           <span className={styles.label}>Unique</span>
           {uniqueDetails.map((detail) => (
-            <span key={detail} className={styles.value}>
+            <span
+              key={detail}
+              className={`${styles.value}${uniqueDetails.length === 1 ? ` ${styles.hangingIndent}` : ""}`}
+            >
               {detail}
             </span>
           ))}
         </div>
       )}
       {indexDetails.length > 0 && (
-        <div className={styles.constraintList}>
+        <div className={indexDetails.length === 1 ? styles.row : styles.constraintList}>
           <span className={styles.label}>Indexes</span>
           {indexDetails.map((detail) => (
-            <span key={detail} className={styles.value}>
+            <span
+              key={detail}
+              className={`${styles.value}${indexDetails.length === 1 ? ` ${styles.hangingIndent}` : ""}`}
+            >
               {detail}
             </span>
           ))}
@@ -71,7 +77,7 @@ export function ColumnTooltip({ column, side }: ColumnTooltipProps) {
       {column.check && (
         <div className={styles.row}>
           <span className={styles.label}>Check</span>
-          <span className={styles.value}>{column.check}</span>
+          <span className={`${styles.value} ${styles.hangingIndent}`}>{column.check}</span>
         </div>
       )}
       {column.enumValues && column.enumValues.length > 0 && (

@@ -16,6 +16,11 @@
   box-shadow: var(--shadow-tooltip);
   pointer-events: none;
   white-space: normal;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  --label-gap: 12px;
+  column-gap: var(--label-gap);
+  row-gap: 4px;
 }
 
 .tooltip::before,
@@ -60,40 +65,38 @@
 }
 
 .row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.row + .row {
-  margin-top: 4px;
+  display: contents;
 }
 
 .label {
   color: var(--color-text-muted);
   font-family: var(--font-sans);
-  flex-shrink: 0;
 }
 
 .value {
-  text-align: right;
   word-break: break-word;
+}
+
+.hangingIndent {
+  display: block;
+  padding-left: var(--label-gap);
+  text-indent: calc(-1 * var(--label-gap));
 }
 
 .constraintList {
+  grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
   gap: 1px;
-  margin-top: 4px;
 }
 
 .constraintList .value {
-  text-align: right;
   word-break: break-word;
+  padding-left: var(--label-gap);
 }
 
 .enumValues {
-  margin-top: 4px;
+  grid-column: 1 / -1;
   padding-top: 4px;
   border-top: 1px solid var(--color-border);
 }
@@ -113,7 +116,7 @@
 }
 
 .doc {
-  margin-top: 4px;
+  grid-column: 1 / -1;
   padding-top: 4px;
   border-top: 1px solid var(--color-border);
   font-family: var(--font-sans);
