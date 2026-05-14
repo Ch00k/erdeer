@@ -4,7 +4,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { optionalAuth, requireAuth } from "../auth/middleware.js";
 import { generateId } from "../auth/session.js";
 import { db } from "../db/connection.js";
-import { diagrams, teamMembers } from "../db/schema.js";
+import { diagrams, teamMembers, teams } from "../db/schema.js";
 import {
   emitDiagramListChanged,
   emitDiagramUpdate,
@@ -43,7 +43,17 @@ export async function registerDiagramRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: "Diagram not found" });
     }
 
-    return { ...diagram, canEdit };
+    let teamName: string | null = null;
+    if (diagram.teamId) {
+      const team = db
+        .select({ name: teams.name })
+        .from(teams)
+        .where(eq(teams.id, diagram.teamId))
+        .get();
+      teamName = team?.name ?? null;
+    }
+
+    return { ...diagram, canEdit, teamName };
   });
 
   // Public-readable: SSE for a single diagram

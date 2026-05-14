@@ -21,6 +21,7 @@ export interface Diagram {
 
 export interface DiagramView extends Diagram {
   canEdit: boolean;
+  teamName: string | null;
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {

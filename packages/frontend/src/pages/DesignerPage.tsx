@@ -43,6 +43,8 @@ export function DesignerPage() {
   const [referenceOpen, setReferenceOpen] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
   const [ownerUserId, setOwnerUserId] = useState<string | null>(null);
+  const [teamId, setTeamId] = useState<string | null>(null);
+  const [teamName, setTeamName] = useState<string | null>(null);
   const [visibility, setVisibility] = useState<Visibility>("private");
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const layoutTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -55,6 +57,8 @@ export function DesignerPage() {
     setAml(d.amlContent);
     setCanEdit(d.canEdit);
     setOwnerUserId(d.ownerUserId);
+    setTeamId(d.teamId);
+    setTeamName(d.teamName);
     setVisibility(d.visibility);
     const parsed = parseAml(d.amlContent);
     const savedLayout: Layout = d.layout ? JSON.parse(d.layout) : {};
@@ -229,6 +233,11 @@ export function DesignerPage() {
           </svg>
         )}
       </div>
+      {user && (
+        <span className={styles.ownerBadge}>
+          {teamId ? `Team: ${teamName ?? "?"}` : "Personal"}
+        </span>
+      )}
       {visibilityElement}
     </div>
   );
