@@ -16,6 +16,7 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GITLAB_CLIENT_ID: ${GITLAB_CLIENT_ID:-}
       GITLAB_CLIENT_SECRET: ${GITLAB_CLIENT_SECRET:-}
+    restart: unless-stopped
     labels:
       caddy: erdeer.dev
       caddy.encode: zstd gzip
