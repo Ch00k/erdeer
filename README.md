@@ -39,14 +39,45 @@ make db-reset     # delete database and re-run migrations
 
 ## Deployment
 
-```bash
-cp .env.example .env
-# Edit .env: set BASE_URL, OAuth credentials, etc.
+Deployed to [Fly.io](https://fly.io) as a single machine backed by one persistent volume (SQLite is a local file, so the app must not be scaled beyond one machine). Config lives in `fly.toml`.
 
-docker compose up -d
+Deploys run from GitHub Actions (`.github/workflows/ci.yml`): on every push to `main` the workflow lints, builds the Docker image in the runner, pushes it to Fly's registry (`registry.fly.io`), and runs `fly deploy --image`. Fly's own builder is not used.
+
+First-time setup:
+
+```bash
+fly apps create erdeer
+fly volumes create erdeer_data --region fra --size 1
+fly secrets set \
+  BASE_URL=https://erdeer.dev \
+  GITHUB_CLIENT_ID=... GITHUB_CLIENT_SECRET=... \
+  GITLAB_CLIENT_ID=... GITLAB_CLIENT_SECRET=... \
+  ALLOWED_DOMAINS=zytlyn.com,vorsee.ai
 ```
 
-Put a reverse proxy (e.g. Caddy) in front of it. Migrations run automatically on startup. Data is stored in `./data/` via bind mount.
+Create a scoped deploy token and add its output as the `FLY_API_TOKEN` repository secret (Settings -> Secrets and variables -> Actions) so the workflow can authenticate:
+
+```bash
+fly tokens create deploy -a erdeer
+```
+
+For a custom domain, point DNS at the app and provision a certificate:
+
+```bash
+fly ips allocate-v4 --shared
+fly ips allocate-v6
+fly certs add erdeer.dev
+```
+
+Then add the DNS records Fly prints (an `A`/`AAAA` or `CNAME` to the app, plus the ACME `CNAME` for the cert).
+
+OAuth callback URLs registered with each provider must match `BASE_URL`:
+
+- GitHub: `https://erdeer.dev/auth/github/callback`
+- GitLab: `https://erdeer.dev/auth/gitlab/callback`
+- Google: `https://erdeer.dev/auth/google/callback`
+
+Subsequent deploys happen automatically on push to `main` (or manually via the workflow's "Run workflow" button). Migrations run automatically on startup.
 
 ## MCP Server
 
