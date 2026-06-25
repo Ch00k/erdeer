@@ -61,6 +61,11 @@ export function Navbar({ center }: NavbarProps) {
             navigate("/");
           }}
         >
+          <img
+            src={resolvedTheme === "dark" ? "/logo_dark.svg" : "/logo.svg"}
+            alt=""
+            className={styles.logo}
+          />
           ERDeer
         </a>
         {center && <div className={styles.center}>{center}</div>}

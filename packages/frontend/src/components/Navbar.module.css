@@ -10,10 +10,18 @@
 }
 
 .title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 16px;
   font-weight: 600;
   color: var(--color-text);
   text-decoration: none;
+}
+
+.logo {
+  width: 42px;
+  height: 42px;
 }
 
 .title:hover {

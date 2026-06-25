@@ -1,0 +1,67 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ERDeer logo">
+  <defs>
+    <linearGradient id="antlerGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#34d399"/>
+      <stop offset="1" stop-color="#0d9488"/>
+    </linearGradient>
+    <linearGradient id="headGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#334155"/>
+      <stop offset="1" stop-color="#1e293b"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ================= HEAD ================= -->
+  <!-- ears -->
+  <path d="M206 214 C 168 188 138 192 120 214 C 150 236 184 240 206 226 Z" fill="url(#headGrad)"/>
+  <path d="M306 214 C 344 188 374 192 392 214 C 362 236 328 240 306 226 Z" fill="url(#headGrad)"/>
+
+  <!-- face -->
+  <path d="M256 198
+           C 290 198 312 204 314 224
+           C 316 256 308 296 296 332
+           C 286 362 272 392 256 414
+           C 240 392 226 362 216 332
+           C 204 296 196 256 198 224
+           C 200 204 222 198 256 198 Z"
+        fill="url(#headGrad)"/>
+
+  <!-- eyes -->
+  <circle cx="234" cy="262" r="9" fill="#34d399"/>
+  <circle cx="278" cy="262" r="9" fill="#34d399"/>
+  <!-- nose -->
+  <path d="M256 396 C 248 388 248 378 256 374 C 264 378 264 388 256 396 Z" fill="#34d399"/>
+
+  <!-- ================= ANTLERS (ER graph) ================= -->
+  <g fill="none" stroke="url(#antlerGrad)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+    <!-- LEFT antler -->
+    <path d="M226 200 L 198 150 L 172 96 L 150 56"/>
+    <path d="M198 150 L 150 138"/>
+    <path d="M172 96 L 206 58"/>
+    <path d="M172 96 L 132 92"/>
+    <!-- RIGHT antler (mirror about x=256) -->
+    <path d="M286 200 L 314 150 L 340 96 L 362 56"/>
+    <path d="M314 150 L 362 138"/>
+    <path d="M340 96 L 306 58"/>
+    <path d="M340 96 L 380 92"/>
+  </g>
+
+  <!-- nodes (entities) -->
+  <g fill="#0f172a" stroke="url(#antlerGrad)" stroke-width="6">
+    <!-- left -->
+    <circle cx="226" cy="200" r="13"/>
+    <circle cx="198" cy="150" r="11"/>
+    <circle cx="172" cy="96"  r="11"/>
+    <circle cx="150" cy="56"  r="12"/>
+    <circle cx="150" cy="138" r="12"/>
+    <circle cx="206" cy="58"  r="12"/>
+    <circle cx="132" cy="92"  r="12"/>
+    <!-- right -->
+    <circle cx="286" cy="200" r="13"/>
+    <circle cx="314" cy="150" r="11"/>
+    <circle cx="340" cy="96"  r="11"/>
+    <circle cx="362" cy="56"  r="12"/>
+    <circle cx="362" cy="138" r="12"/>
+    <circle cx="306" cy="58"  r="12"/>
+    <circle cx="380" cy="92"  r="12"/>
+  </g>
+</svg>

@@ -3,12 +3,14 @@ import { useSearchParams } from "react-router";
 import { fetchProviders, type Providers } from "../api.js";
 import { Footer } from "../components/Footer.js";
 import { Navbar } from "../components/Navbar.js";
+import { useTheme } from "../theme.js";
 import styles from "./LoginPage.module.css";
 
 export function LoginPage() {
   const [searchParams] = useSearchParams();
   const error = searchParams.get("error");
   const [providers, setProviders] = useState<Providers | null>(null);
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     fetchProviders().then(setProviders);
@@ -19,6 +21,11 @@ export function LoginPage() {
       <Navbar />
       <div className={styles.container}>
         <div className={styles.card}>
+          <img
+            src={resolvedTheme === "dark" ? "/logo_dark.svg" : "/logo.svg"}
+            alt=""
+            className={styles.logo}
+          />
           <h1 className={styles.title}>ERDeer</h1>
           <p className={styles.subtitle}>Sign in to get started</p>
           {error && <p className={styles.error}>{error}</p>}
