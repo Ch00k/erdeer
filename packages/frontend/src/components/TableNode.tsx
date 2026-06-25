@@ -3,6 +3,7 @@ import { type MouseEvent, memo, useCallback, useEffect, useRef, useState } from 
 import type { Column } from "../types.js";
 import { ColumnTooltip } from "./ColumnTooltip.js";
 import styles from "./TableNode.module.css";
+import { Tooltip } from "./Tooltip.js";
 
 export type TableNodeData = {
   label: string;
@@ -13,12 +14,13 @@ export type TableNodeData = {
 
 type TableNodeType = Node<TableNodeData, "table">;
 
-type HoveredColumn = { name: string; side: "left" | "right" };
+type HoverTarget = { kind: "header" } | { kind: "column"; name: string };
+type Hovered = HoverTarget & { side: "left" | "right" };
 
 export const TableNode = memo(function TableNode({ id, data }: NodeProps<TableNodeType>) {
-  const [hovered, setHovered] = useState<HoveredColumn | null>(null);
+  const [hovered, setHovered] = useState<Hovered | null>(null);
   const delayTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const pendingHover = useRef<HoveredColumn | null>(null);
+  const pendingHover = useRef<Hovered | null>(null);
   const { setNodes } = useReactFlow();
 
   useEffect(() => {
@@ -34,11 +36,11 @@ export const TableNode = memo(function TableNode({ id, data }: NodeProps<TableNo
     return () => clearTimeout(delayTimer.current);
   }, []);
 
-  const handleMouseEnter = useCallback((e: MouseEvent, name: string) => {
+  const handleMouseEnter = useCallback((e: MouseEvent, target: HoverTarget) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const side = centerX > window.innerWidth / 2 ? "left" : "right";
-    const next = { name, side } as const;
+    const next = { ...target, side } as const;
     pendingHover.current = next;
     clearTimeout(delayTimer.current);
     delayTimer.current = setTimeout(() => setHovered(next), 175);
@@ -53,16 +55,25 @@ export const TableNode = memo(function TableNode({ id, data }: NodeProps<TableNo
   return (
     <div className={styles.table}>
       {/* TODO: show VIEW badge in header when entity is a view */}
-      <div className={styles.header} title={data.comment}>
+      <div
+        className={styles.header}
+        onMouseEnter={data.comment ? (e) => handleMouseEnter(e, { kind: "header" }) : undefined}
+        onMouseLeave={data.comment ? handleMouseLeave : undefined}
+      >
         {data.schema && <span className={styles.schema}>{data.schema}.</span>}
         {data.label}
+        {hovered?.kind === "header" && data.comment && (
+          <Tooltip side={hovered.side}>
+            <span className={styles.comment}>{data.comment}</span>
+          </Tooltip>
+        )}
       </div>
       <div className={styles.columns}>
         {data.columns.map((col) => (
           <div
             key={col.name}
             className={styles.column}
-            onMouseEnter={(e) => handleMouseEnter(e, col.name)}
+            onMouseEnter={(e) => handleMouseEnter(e, { kind: "column", name: col.name })}
             onMouseLeave={handleMouseLeave}
           >
             <Handle
@@ -97,7 +108,9 @@ export const TableNode = memo(function TableNode({ id, data }: NodeProps<TableNo
               {col.name}
             </span>
             <span className={styles.columnType}>{col.type}</span>
-            {hovered?.name === col.name && <ColumnTooltip column={col} side={hovered.side} />}
+            {hovered?.kind === "column" && hovered.name === col.name && (
+              <ColumnTooltip column={col} side={hovered.side} />
+            )}
           </div>
         ))}
       </div>
