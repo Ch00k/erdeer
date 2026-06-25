@@ -1,67 +1,9 @@
-.tooltip {
-  position: absolute;
-  z-index: 1000;
-  top: 50%;
-  transform: translateY(-50%);
-  width: max-content;
-  min-width: 200px;
-  max-width: 480px;
-  padding: 8px 10px;
-  background: var(--color-bg);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-  font-size: 10px;
-  font-family: var(--font-mono);
-  border-radius: 4px;
-  box-shadow: var(--shadow-tooltip);
-  pointer-events: none;
-  white-space: normal;
+.grid {
   display: grid;
   grid-template-columns: auto 1fr;
   --label-gap: 12px;
   column-gap: var(--label-gap);
   row-gap: 4px;
-}
-
-.tooltip::before,
-.tooltip::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  border: 6px solid transparent;
-}
-
-.tooltip::after {
-  border-width: 5px;
-}
-
-.right {
-  left: calc(100% + 8px);
-}
-
-.right::before {
-  right: 100%;
-  border-right-color: var(--color-border);
-}
-
-.right::after {
-  right: calc(100% - 1px);
-  border-right-color: var(--color-bg);
-}
-
-.left {
-  right: calc(100% + 8px);
-}
-
-.left::before {
-  left: 100%;
-  border-left-color: var(--color-border);
-}
-
-.left::after {
-  left: calc(100% - 1px);
-  border-left-color: var(--color-bg);
 }
 
 .row {

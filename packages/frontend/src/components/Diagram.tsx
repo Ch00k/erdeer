@@ -1,12 +1,13 @@
 import {
   type Edge,
+  type EdgeMouseHandler,
   type EdgeTypes,
   type Node,
   type NodeTypes,
   type OnNodesChange,
   ReactFlow,
 } from "@xyflow/react";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import "@xyflow/react/dist/style.css";
 import { useTheme } from "../theme.js";
 import type { Relation, Schema } from "../types.js";
@@ -45,6 +46,7 @@ interface DiagramProps {
 
 export function Diagram({ schema, nodes, onNodesChange, readOnly }: DiagramProps) {
   const { resolvedTheme } = useTheme();
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const edges: Edge[] = useMemo(() => {
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
     return schema.relations.map((rel, i) => {
@@ -56,17 +58,29 @@ export function Diagram({ schema, nodes, onNodesChange, readOnly }: DiagramProps
       const srcSide = srcX < refX ? "right" : "left";
       const refSide = srcX < refX ? "left" : "right";
 
+      const id = `e-${i}`;
+      const highlighted = id === selectedEdgeId;
+
       return {
-        id: `e-${i}`,
+        id,
         source: rel.src.table,
         target: rel.ref.table,
         sourceHandle: `${rel.src.column}-${srcSide}-source`,
         targetHandle: `${rel.ref.column}-${refSide}-target`,
         type: "relation",
-        data: cardinalityLabels(rel.cardinality),
+        data: { ...cardinalityLabels(rel.cardinality), highlighted },
+        zIndex: highlighted ? 1 : 0,
       };
     });
-  }, [schema.relations, nodes]);
+  }, [schema.relations, nodes, selectedEdgeId]);
+
+  const onEdgeClick = useCallback<EdgeMouseHandler>((_event, edge) => {
+    setSelectedEdgeId((current) => (current === edge.id ? null : edge.id));
+  }, []);
+
+  const onPaneClick = useCallback(() => {
+    setSelectedEdgeId(null);
+  }, []);
 
   return (
     <div className={styles.canvas}>
@@ -76,6 +90,8 @@ export function Diagram({ schema, nodes, onNodesChange, readOnly }: DiagramProps
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
+        onEdgeClick={onEdgeClick}
+        onPaneClick={onPaneClick}
         colorMode={resolvedTheme}
         fitView
         nodesConnectable={false}
