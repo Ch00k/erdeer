@@ -35,8 +35,10 @@ Version 0.1.0 - **beta**.
 - `components/Editor.tsx` - Monaco-based AML editor with word wrap toggle and theme picker. Reads theme state from `useMonaco()`.
 - `components/monacoContext.tsx` - `MonacoProvider`/`useMonaco`. Initializes Monaco via `loader.init()`, registers the AML language once, owns the theme picker selection (persisted to `localStorage["erdeer_monaco_theme"]`), and lazy-applies the resolved theme via `monaco.editor.setTheme`. "Auto" resolves to IDLE in light mode and GitHub Dark in dark mode.
 - `components/monacoThemes.ts` - Lists community themes from `monaco-themes/themes/themelist.json`, lazy-loads each theme JSON via dynamic `import()` and registers it with `monaco.editor.defineTheme`. Caches each theme's editor.background/foreground in a map exposed via `getThemeColors(id)` so the AML reference panel can match its code-block backgrounds to the active theme.
-- `components/Diagram.tsx` - React Flow canvas, computes edges from schema relations
-- `components/TableNode.tsx` - custom React Flow node for database tables
+- `components/Diagram.tsx` - React Flow canvas, computes edges from schema relations. Clicking a relation highlights it (tracked in local `selectedEdgeId` state, fed to the edge via `data.highlighted` and an elevated `zIndex`); clicking the pane or the edge again clears it.
+- `components/TableNode.tsx` - custom React Flow node for database tables. Hovering a column shows a `ColumnTooltip`; hovering the header (when the table has a comment) shows that comment in the same styled popup. Both share the delayed-hover machinery and side-aware positioning.
+- `components/Tooltip.tsx` - shared hover-tooltip shell: absolute positioning, left/right arrow, box styling. Wraps `ColumnTooltip`'s content grid and the table header's comment.
+- `components/ColumnTooltip.tsx` - column detail popup (type, constraints, indexes, default, check, enum values, comment) rendered inside `Tooltip`
 - `aml.ts` - adapter between @azimutt/aml parser output and our Schema types
 
 ### Frontend routes
@@ -90,7 +92,7 @@ Version 0.1.0 - **beta**.
 - **husky** + **lint-staged** for pre-commit hooks (runs biome on staged files)
 - **Vite proxy** forwards `/auth` and `/api` requests to backend in dev
 - **SSE for live updates** - Two SSE endpoints: `GET /api/diagrams/:id/events` (diagram content changes) and `GET /api/diagrams/events` (diagram list changes). Backend emits from both REST API and MCP write paths. List events notify all affected team members. Frontend `DesignerPage` and `DashboardPage` subscribe and re-fetch on external changes, filtering out own session via `sourceSessionId`.
-- Interactive features disabled: no edge drawing, no edge selection, no element selection
+- Interactive features disabled: no edge drawing, no element selection. Edges are clickable (via `onEdgeClick`) to highlight a single relation; React Flow's own selection stays off.
 - **Team roles and invitations** - Team members have roles (owner/member). Only owners can invite, remove members, and manage invitations. Invitations are by email; invitees accept/decline on the Teams page. Account deletion auto-promotes the longest-standing member if the departing user is the sole owner, or deletes the team if they're the last member.
 - **Diagram visibility** - Each diagram has a `visibility` column (`private` | `public`, default `private`, with a CHECK constraint). Public diagrams are readable by anyone who has the URL (no auth required); writes still require ownership or team membership; only the owner can flip visibility.
 - **Anonymous sandbox + auto-import** - `/sandbox` is a single-doc editor persisted to `localStorage` under `erdeer_sandbox`. On any successful auth bootstrap (`AuthProvider`), if the localStorage key is present it is POSTed as a new personal diagram and then cleared. No "Save to account" button — the import is silent. Logged-in users visiting `/sandbox` are redirected to `/`.
@@ -134,14 +136,19 @@ make db-migrate   # apply pending migrations
 make db-reset     # delete database and re-run migrations
 ```
 
-## Docker deployment
+## Deployment
+
+Deployed to **Fly.io** (`fly.toml`). The app runs as a **single machine** backed by **one persistent volume** (`erdeer_data`, mounted at `/app/packages/backend/data`) because SQLite is a local file — it must never be scaled beyond one machine. The container listens on internal port 3000; Fly terminates TLS and proxies to it. Secrets (`BASE_URL`, OAuth credentials, `ALLOWED_DOMAINS`) are set via `fly secrets set`. Migrations run automatically on startup. The `[deploy] strategy = "immediate"` setting stops and replaces the machine in place, since a volume can only attach to one machine at a time.
+
+Deploys run from **GitHub Actions** (`.github/workflows/ci.yml`): on every push to `main` (and via manual `workflow_dispatch`), the `deploy` job runs after `lint`, builds the Docker image in the runner, pushes it to Fly's registry (`registry.fly.io/erdeer:<sha>`), and runs `fly deploy --image`. Fly's own builder is not used. The image is tagged with the commit SHA for traceable rollbacks. Authentication uses a scoped deploy token stored as the `FLY_API_TOKEN` repository secret (created with `fly tokens create deploy -a erdeer`).
+
+The `Dockerfile` is also runnable standalone via `compose.yaml` (used for local container testing / Caddy-fronted hosting).
+
+First-time setup (the workflow deploys but does not bootstrap these):
 
 ```bash
-# Create .env with your configuration
-cp .env.example .env
-# Edit .env: set BASE_URL, PORT, HOST, OAuth credentials, etc.
-
-docker compose up -d
+fly apps create erdeer
+fly volumes create erdeer_data --region fra --size 1
+fly secrets set BASE_URL=https://erdeer.dev GITHUB_CLIENT_ID=... GITHUB_CLIENT_SECRET=... GITLAB_CLIENT_ID=... GITLAB_CLIENT_SECRET=... ALLOWED_DOMAINS=zytlyn.com,vorsee.ai
+fly tokens create deploy -a erdeer   # add output as the FLY_API_TOKEN repo secret
 ```
-
-The app runs on port 3000. Put Caddy (or another reverse proxy) in front of it. Migrations run automatically on startup. Data is stored in `./data/` via bind mount.
