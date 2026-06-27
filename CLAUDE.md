@@ -21,25 +21,28 @@ Version 0.1.0 - **beta**.
 - `api.ts` - API client functions (auth, diagrams CRUD, teams, invitations, tokens)
 - `pages/LoginPage.tsx` - OAuth login buttons (GitHub, Google, GitLab) plus a "Try without an account" link to the sandbox
 - `pages/DashboardPage.tsx` - diagram list with personal/team tabs, create/delete
-- `pages/DesignerPage.tsx` - AML editor + diagram canvas, auto-saves to API. Renders read-only when the viewer can't write (anon viewer, or non-member). Owners get a Public/Private visibility toggle.
-- `pages/SandboxPage.tsx` - public, anonymous-only editor backed by `localStorage`. Single sandbox doc with title field and Reset button. Logged-in users get redirected to `/`.
+- `pages/DesignerPage.tsx` - AML editor + diagram canvas (via `Workspace`), auto-saves to API. Renders read-only when the viewer can't write (anon viewer, or non-member). Owners get a Public/Private visibility toggle.
+- `pages/SandboxPage.tsx` - public, anonymous-only editor (via `Workspace`) backed by `localStorage`. Single sandbox doc with title field and Reset button. Logged-in users get redirected to `/`.
 - `pages/TeamsPage.tsx` - team management: create teams, invite/remove members, accept/decline invitations, team roles (owner/member)
 - `pages/TokensPage.tsx` - API token management (list, create, revoke)
-- `pages/SchemaPage.tsx` - read-only view of the app's own database schema
+- `pages/SchemaPage.tsx` - editable (session-only) view of the app's own database schema, rendered via `Workspace`
 - `sandbox.ts` - `localStorage` helpers + seed for the anonymous sandbox
 - `components/Navbar.tsx` - shared navbar with theme toggle (sun/moon) and user dropdown menu (Teams, API Tokens, Sign out, Delete account)
 - `components/Footer.tsx` - shared footer with copyright and Schema link
 - `components/ConfirmDialog.tsx` - modal confirmation dialog (replaces native confirm())
-- `components/AmlReference.tsx` - toggleable AML language reference panel for the designer; code blocks are syntax-highlighted via `monaco.editor.colorize` using the same theme as the editor.
+- `components/Workspace.tsx` - shared editor+diagram layout used by the Designer, Sandbox, and Schema pages. Owns the editor-pane width (resizable), the collapse/expand state (fully hides the editor pane and resize handle, surfacing a top-left expand button over the diagram), and the AML reference toggle. Takes `aml`/`onAmlChange`/`schema`/`nodes`/`onNodesChange`/`readOnly`.
+- `components/AmlReference.tsx` - toggleable AML language reference panel; code blocks are syntax-highlighted via `monaco.editor.colorize` using the same theme as the editor.
 - `components/ResizeHandle.tsx` - draggable divider for resizing editor pane
-- `components/Editor.tsx` - Monaco-based AML editor with word wrap toggle and theme picker. Reads theme state from `useMonaco()`.
+- `components/Editor.tsx` - Monaco-based AML editor with word wrap toggle, theme picker, an AML reference toggle (`onToggleReference`), and a collapse button (`onCollapse`). Reads theme state from `useMonaco()`.
 - `components/monacoContext.tsx` - `MonacoProvider`/`useMonaco`. Initializes Monaco via `loader.init()`, registers the AML language once, owns the theme picker selection (persisted to `localStorage["erdeer_monaco_theme"]`), and lazy-applies the resolved theme via `monaco.editor.setTheme`. "Auto" resolves to IDLE in light mode and GitHub Dark in dark mode.
 - `components/monacoThemes.ts` - Lists community themes from `monaco-themes/themes/themelist.json`, lazy-loads each theme JSON via dynamic `import()` and registers it with `monaco.editor.defineTheme`. Caches each theme's editor.background/foreground in a map exposed via `getThemeColors(id)` so the AML reference panel can match its code-block backgrounds to the active theme.
-- `components/Diagram.tsx` - React Flow canvas, computes edges from schema relations. Clicking a relation highlights it (tracked in local `selectedEdgeId` state, fed to the edge via `data.highlighted` and an elevated `zIndex`); clicking the pane or the edge again clears it.
+- `components/Diagram.tsx` - React Flow canvas, computes edges from schema relations. Edge ids are `relationKey(rel)`. Clicking a relation highlights it (tracked in local `selectedEdgeId` state, fed to the edge via `data.highlighted` and an elevated `zIndex`); clicking the pane or the edge again clears it. `minZoom={0.1}` allows zooming far out; a bottom-left `<Controls>` bar (lock toggle hidden) provides zoom in/out and fit-to-view. Each edge's `srcSide`/`refSide` (which left/right column handle the line attaches to) defaults to the facing side based on relative table positions, but is overridden by `edgeLayout[relationKey]`.
+- `components/RelationEdge.tsx` - custom smooth-step edge with crow's-foot cardinality markers, derived from the relation's cardinality and the handle side each end attaches to. Highlighted relations render in the primary color. When a relation is highlighted (and the viewer can edit), a small flip handle is drawn just beyond each endpoint; clicking one flips that end to the other side of its table via `data.onFlip(relationKey, { srcSide | refSide })`.
 - `components/TableNode.tsx` - custom React Flow node for database tables. Hovering a column shows a `ColumnTooltip`; hovering the header (when the table has a comment) shows that comment in the same styled popup. Both share the delayed-hover machinery and side-aware positioning.
 - `components/Tooltip.tsx` - shared hover-tooltip shell: absolute positioning, left/right arrow, box styling. Wraps `ColumnTooltip`'s content grid and the table header's comment.
 - `components/ColumnTooltip.tsx` - column detail popup (type, constraints, indexes, default, check, enum values, comment) rendered inside `Tooltip`
 - `aml.ts` - adapter between @azimutt/aml parser output and our Schema types
+- `layout.ts` - diagram layout format and helpers. `DiagramLayout` is `{ nodes, edges }`: `nodes` maps table name to position, `edges` maps `relationKey(rel)` to an `EdgeCustomization` (`srcSide`/`refSide`). `parseLayout` reads that shape and falls back to treating a bare map as the old node-only format; `serializeLayout` writes it. The backend stores this as the opaque `layout` JSON string.
 
 ### Frontend routes
 
@@ -93,6 +96,7 @@ Version 0.1.0 - **beta**.
 - **Vite proxy** forwards `/auth` and `/api` requests to backend in dev
 - **SSE for live updates** - Two SSE endpoints: `GET /api/diagrams/:id/events` (diagram content changes) and `GET /api/diagrams/events` (diagram list changes). Backend emits from both REST API and MCP write paths. List events notify all affected team members. Frontend `DesignerPage` and `DashboardPage` subscribe and re-fetch on external changes, filtering out own session via `sourceSessionId`.
 - Interactive features disabled: no edge drawing, no element selection. Edges are clickable (via `onEdgeClick`) to highlight a single relation; React Flow's own selection stays off.
+- **Connector side-change** - The side (left/right column handle) each relation end attaches to defaults to the facing side but can be overridden. Highlighting a relation reveals a flip handle just past each endpoint; clicking it flips that end. Overrides are stored per relation (`srcSide`/`refSide`) in the diagram `layout` `edges` map and persist alongside node positions (Designer -> API, Sandbox -> localStorage, Schema -> session only).
 - **Team roles and invitations** - Team members have roles (owner/member). Only owners can invite, remove members, and manage invitations. Invitations are by email; invitees accept/decline on the Teams page. Account deletion auto-promotes the longest-standing member if the departing user is the sole owner, or deletes the team if they're the last member.
 - **Diagram visibility** - Each diagram has a `visibility` column (`private` | `public`, default `private`, with a CHECK constraint). Public diagrams are readable by anyone who has the URL (no auth required); writes still require ownership or team membership; only the owner can flip visibility.
 - **Anonymous sandbox + auto-import** - `/sandbox` is a single-doc editor persisted to `localStorage` under `erdeer_sandbox`. On any successful auth bootstrap (`AuthProvider`), if the localStorage key is present it is POSTed as a new personal diagram and then cleared. No "Save to account" button — the import is silent. Logged-in users visiting `/sandbox` are redirected to `/`.

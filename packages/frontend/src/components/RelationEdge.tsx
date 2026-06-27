@@ -1,12 +1,15 @@
 import { type EdgeProps, getSmoothStepPath } from "@xyflow/react";
+import type { MouseEvent } from "react";
+import type { EdgeCustomization, EdgeSide } from "../layout.js";
 
 const SPREAD = 6;
 const LENGTH = 7;
+const FLIP_HANDLE_RADIUS = 10;
 
 interface MarkerProps {
   x: number;
   y: number;
-  side: "left" | "right";
+  side: EdgeSide;
   stroke: string;
   strokeWidth: number;
 }
@@ -37,6 +40,30 @@ function ManyMarker({ x, y, side, stroke, strokeWidth }: MarkerProps) {
   );
 }
 
+type RelationEdgeData = {
+  srcCardinality?: string;
+  refCardinality?: string;
+  highlighted?: boolean;
+  editable?: boolean;
+  relKey?: string;
+  onFlip?: (key: string, patch: EdgeCustomization) => void;
+};
+
+function FlipHandle({ x, y, onClick }: { x: number; y: number; onClick: (e: MouseEvent) => void }) {
+  return (
+    <circle
+      cx={x}
+      cy={y}
+      r={FLIP_HANDLE_RADIUS}
+      fill="transparent"
+      style={{ cursor: "pointer", pointerEvents: "all" }}
+      onClick={onClick}
+    >
+      <title>Flip to the other side</title>
+    </circle>
+  );
+}
+
 export function RelationEdge({
   id,
   sourceX,
@@ -57,18 +84,31 @@ export function RelationEdge({
     targetPosition,
   });
 
-  const srcCardinality = (data?.srcCardinality as string) ?? "";
-  const refCardinality = (data?.refCardinality as string) ?? "";
-  const highlighted = data?.highlighted === true;
+  const d = (data ?? {}) as RelationEdgeData;
+  const srcCardinality = d.srcCardinality ?? "";
+  const refCardinality = d.refCardinality ?? "";
+  const highlighted = d.highlighted === true;
 
-  const srcSide = sourcePosition === "right" ? "right" : "left";
-  const refSide = targetPosition === "right" ? "right" : "left";
+  const srcSide: EdgeSide = sourcePosition === "right" ? "right" : "left";
+  const refSide: EdgeSide = targetPosition === "right" ? "right" : "left";
 
   const SrcMarker = srcCardinality === "N" ? ManyMarker : OneMarker;
   const RefMarker = refCardinality === "N" ? ManyMarker : OneMarker;
 
   const stroke = highlighted ? "var(--color-primary)" : "var(--color-relation)";
   const strokeWidth = highlighted ? 1.75 : 1;
+
+  const showFlipHandles = highlighted && d.editable === true && !!d.onFlip && !!d.relKey;
+
+  const flip = (end: "src" | "ref") => (e: MouseEvent) => {
+    e.stopPropagation();
+    if (!d.onFlip || !d.relKey) return;
+    if (end === "src") {
+      d.onFlip(d.relKey, { srcSide: srcSide === "right" ? "left" : "right" });
+    } else {
+      d.onFlip(d.relKey, { refSide: refSide === "right" ? "left" : "right" });
+    }
+  };
 
   return (
     <g>
@@ -97,6 +137,20 @@ export function RelationEdge({
           stroke={stroke}
           strokeWidth={strokeWidth}
         />
+      )}
+      {showFlipHandles && (
+        <>
+          <FlipHandle
+            x={sourceX + (srcSide === "right" ? LENGTH : -LENGTH) / 2}
+            y={sourceY}
+            onClick={flip("src")}
+          />
+          <FlipHandle
+            x={targetX + (refSide === "right" ? LENGTH : -LENGTH) / 2}
+            y={targetY}
+            onClick={flip("ref")}
+          />
+        </>
       )}
     </g>
   );

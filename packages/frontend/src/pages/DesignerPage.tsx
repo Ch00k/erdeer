@@ -4,17 +4,21 @@ import { useNavigate, useParams } from "react-router";
 import { parseAml } from "../aml.js";
 import { type DiagramView, fetchDiagram, updateDiagram, type Visibility } from "../api.js";
 import { useAuth } from "../auth.js";
-import { AmlReference } from "../components/AmlReference.js";
-import { Diagram } from "../components/Diagram.js";
-import { Editor } from "../components/Editor.js";
 import { Footer } from "../components/Footer.js";
 import { Navbar } from "../components/Navbar.js";
-import { ResizeHandle } from "../components/ResizeHandle.js";
 import type { TableNodeData } from "../components/TableNode.js";
+import { Workspace } from "../components/Workspace.js";
+import {
+  type EdgeCustomization,
+  type EdgeLayout,
+  type NodeLayout,
+  parseLayout,
+  serializeLayout,
+} from "../layout.js";
 import type { Schema } from "../types.js";
 import styles from "./DesignerPage.module.css";
 
-type Layout = Record<string, { x: number; y: number }>;
+type Layout = NodeLayout;
 
 function schemaToNodes(schema: Schema, layout: Layout): Node<TableNodeData>[] {
   return schema.tables.map((table) => ({
@@ -39,16 +43,16 @@ export function DesignerPage() {
   const [schema, setSchema] = useState<Schema>({ tables: [], relations: [] });
   const [nodes, setNodes] = useState<Node<TableNodeData>[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editorWidth, setEditorWidth] = useState(() => Math.round(window.innerWidth * 0.25));
-  const [referenceOpen, setReferenceOpen] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
   const [ownerUserId, setOwnerUserId] = useState<string | null>(null);
   const [teamId, setTeamId] = useState<string | null>(null);
   const [teamName, setTeamName] = useState<string | null>(null);
   const [visibility, setVisibility] = useState<Visibility>("private");
+  const [edgeLayout, setEdgeLayout] = useState<EdgeLayout>({});
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const layoutTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const layoutRef = useRef<Layout>({});
+  const edgeLayoutRef = useRef<EdgeLayout>({});
 
   const isOwner = !!user && ownerUserId === user.id;
 
@@ -61,10 +65,12 @@ export function DesignerPage() {
     setTeamName(d.teamName);
     setVisibility(d.visibility);
     const parsed = parseAml(d.amlContent);
-    const savedLayout: Layout = d.layout ? JSON.parse(d.layout) : {};
-    layoutRef.current = savedLayout;
+    const savedLayout = parseLayout(d.layout);
+    layoutRef.current = savedLayout.nodes;
+    edgeLayoutRef.current = savedLayout.edges;
+    setEdgeLayout(savedLayout.edges);
     setSchema(parsed);
-    setNodes(schemaToNodes(parsed, savedLayout));
+    setNodes(schemaToNodes(parsed, savedLayout.nodes));
   }, []);
 
   useEffect(() => {
@@ -126,20 +132,36 @@ export function DesignerPage() {
     [saveAml],
   );
 
+  const persistLayout = useCallback(() => {
+    if (!id || !canEdit) return;
+    clearTimeout(layoutTimer.current);
+    layoutTimer.current = setTimeout(() => {
+      updateDiagram(id, {
+        layout: serializeLayout({ nodes: layoutRef.current, edges: edgeLayoutRef.current }),
+      });
+    }, 1000);
+  }, [id, canEdit]);
+
   const saveLayout = useCallback(
     (updatedNodes: Node<TableNodeData>[]) => {
-      if (!id || !canEdit) return;
       const newLayout: Layout = {};
       for (const node of updatedNodes) {
         newLayout[node.id] = node.position;
       }
       layoutRef.current = newLayout;
-      clearTimeout(layoutTimer.current);
-      layoutTimer.current = setTimeout(() => {
-        updateDiagram(id, { layout: JSON.stringify(newLayout) });
-      }, 1000);
+      persistLayout();
     },
-    [id, canEdit],
+    [persistLayout],
+  );
+
+  const handleEdgeLayoutChange = useCallback(
+    (key: string, patch: EdgeCustomization) => {
+      const next = { ...edgeLayoutRef.current, [key]: { ...edgeLayoutRef.current[key], ...patch } };
+      edgeLayoutRef.current = next;
+      setEdgeLayout(next);
+      persistLayout();
+    },
+    [persistLayout],
   );
 
   const handleNodesChange: OnNodesChange<Node<TableNodeData>> = useCallback(
@@ -169,10 +191,6 @@ export function DesignerPage() {
     },
     [id, canEdit],
   );
-
-  const handleResize = useCallback((deltaX: number) => {
-    setEditorWidth((w) => Math.max(200, Math.min(800, w + deltaX)));
-  }, []);
 
   const toggleVisibility = useCallback(() => {
     if (!id || !isOwner) return;
@@ -245,27 +263,16 @@ export function DesignerPage() {
   return (
     <div className={styles.layout}>
       <Navbar center={titleInput} />
-      <div className={styles.workspace}>
-        <div className={styles.editorPane} style={{ width: editorWidth }}>
-          <Editor
-            value={aml}
-            onChange={handleChange}
-            readOnly={!canEdit}
-            onToggleReference={() => setReferenceOpen((v) => !v)}
-            referenceOpen={referenceOpen}
-          />
-        </div>
-        <ResizeHandle onResize={handleResize} />
-        <div className={styles.diagramPane}>
-          <Diagram
-            schema={schema}
-            nodes={nodes}
-            onNodesChange={handleNodesChange}
-            readOnly={!canEdit}
-          />
-          {referenceOpen && <AmlReference onClose={() => setReferenceOpen(false)} />}
-        </div>
-      </div>
+      <Workspace
+        aml={aml}
+        onAmlChange={handleChange}
+        schema={schema}
+        nodes={nodes}
+        onNodesChange={handleNodesChange}
+        edgeLayout={edgeLayout}
+        onEdgeLayoutChange={handleEdgeLayoutChange}
+        readOnly={!canEdit}
+      />
       <Footer />
     </div>
   );

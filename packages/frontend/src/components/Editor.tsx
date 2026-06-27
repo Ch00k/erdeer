@@ -10,6 +10,7 @@ interface EditorProps {
   readOnly?: boolean;
   onToggleReference?: () => void;
   referenceOpen?: boolean;
+  onCollapse?: () => void;
 }
 
 export function Editor({
@@ -18,6 +19,7 @@ export function Editor({
   readOnly,
   onToggleReference,
   referenceOpen,
+  onCollapse,
 }: EditorProps) {
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const [wordWrap, setWordWrap] = useState(true);
@@ -91,6 +93,24 @@ export function Editor({
               />
             </svg>
           </button>
+          {onCollapse && (
+            <button className={styles.headerButton} onClick={onCollapse} title="Collapse editor">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect width="18" height="18" x="3" y="3" rx="2" />
+                <path d="M9 3v18" />
+                <path d="m16 15-3-3 3-3" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
       <div className={styles.editorWrapper}>
