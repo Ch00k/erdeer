@@ -57,6 +57,10 @@ export async function fetchCurrentUser(): Promise<User | null> {
   }
 }
 
+export async function logout(): Promise<void> {
+  await request("/auth/logout", { method: "POST" });
+}
+
 export async function fetchPersonalDiagrams(): Promise<Diagram[]> {
   return request<Diagram[]>("/api/diagrams/personal");
 }
@@ -128,12 +132,6 @@ export async function createTeam(name: string): Promise<{ id: string; name: stri
 
 export async function fetchTeamMembers(teamId: string): Promise<TeamMember[]> {
   return request<TeamMember[]>(`/api/teams/${teamId}/members`);
-}
-
-export async function searchUsers(
-  query: string,
-): Promise<{ id: string; email: string; name: string }[]> {
-  return request(`/api/users/search?email=${encodeURIComponent(query)}`);
 }
 
 export async function removeTeamMember(teamId: string, memberId: string): Promise<void> {

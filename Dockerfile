@@ -29,6 +29,7 @@ COPY packages/shared/package.json packages/shared/
 COPY packages/backend/package.json packages/backend/
 
 ENV CI=true
+ENV NODE_ENV=production
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 COPY --from=build /app/packages/shared/dist packages/shared/dist
