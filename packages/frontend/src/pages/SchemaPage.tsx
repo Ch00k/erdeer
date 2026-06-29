@@ -2,16 +2,15 @@ import { applyNodeChanges, type Node, type OnNodesChange } from "@xyflow/react";
 import { useCallback, useRef, useState } from "react";
 import schemaAml from "../../../../db.aml?raw";
 import { parseAml } from "../aml.js";
-import { Diagram } from "../components/Diagram.js";
-import { Editor } from "../components/Editor.js";
 import { Footer } from "../components/Footer.js";
 import { Navbar } from "../components/Navbar.js";
-import { ResizeHandle } from "../components/ResizeHandle.js";
 import type { TableNodeData } from "../components/TableNode.js";
+import { Workspace } from "../components/Workspace.js";
+import type { EdgeCustomization, EdgeLayout, NodeLayout } from "../layout.js";
 import type { Schema } from "../types.js";
 import styles from "./SchemaPage.module.css";
 
-type Layout = Record<string, { x: number; y: number }>;
+type Layout = NodeLayout;
 
 function schemaToNodes(schema: Schema, layout: Layout): Node<TableNodeData>[] {
   return schema.tables.map((table) => ({
@@ -32,7 +31,7 @@ export function SchemaPage() {
   const [aml, setAml] = useState(schemaAml);
   const [schema, setSchema] = useState<Schema>(initialSchema);
   const [nodes, setNodes] = useState<Node<TableNodeData>[]>(() => schemaToNodes(initialSchema, {}));
-  const [editorWidth, setEditorWidth] = useState(() => Math.round(window.innerWidth * 0.25));
+  const [edgeLayout, setEdgeLayout] = useState<EdgeLayout>({});
   const layoutRef = useRef<Layout>({});
 
   const handleChange = useCallback((value: string) => {
@@ -47,6 +46,10 @@ export function SchemaPage() {
       Object.assign(layoutRef.current, currentPositions);
       return schemaToNodes(newSchema, layoutRef.current);
     });
+  }, []);
+
+  const handleEdgeLayoutChange = useCallback((key: string, patch: EdgeCustomization) => {
+    setEdgeLayout((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
   }, []);
 
   const handleNodesChange: OnNodesChange<Node<TableNodeData>> = useCallback((changes) => {
@@ -64,22 +67,18 @@ export function SchemaPage() {
     });
   }, []);
 
-  const handleResize = useCallback((deltaX: number) => {
-    setEditorWidth((w) => Math.max(200, Math.min(800, w + deltaX)));
-  }, []);
-
   return (
     <div className={styles.layout}>
       <Navbar center={<span className={styles.pageTitle}>App Schema</span>} />
-      <div className={styles.workspace}>
-        <div className={styles.editorPane} style={{ width: editorWidth }}>
-          <Editor value={aml} onChange={handleChange} />
-        </div>
-        <ResizeHandle onResize={handleResize} />
-        <div className={styles.diagramPane}>
-          <Diagram schema={schema} nodes={nodes} onNodesChange={handleNodesChange} />
-        </div>
-      </div>
+      <Workspace
+        aml={aml}
+        onAmlChange={handleChange}
+        schema={schema}
+        nodes={nodes}
+        onNodesChange={handleNodesChange}
+        edgeLayout={edgeLayout}
+        onEdgeLayoutChange={handleEdgeLayoutChange}
+      />
       <Footer />
     </div>
   );

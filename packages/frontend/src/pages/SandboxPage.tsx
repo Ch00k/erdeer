@@ -3,19 +3,23 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { parseAml } from "../aml.js";
 import { useAuth } from "../auth.js";
-import { AmlReference } from "../components/AmlReference.js";
 import { ConfirmDialog } from "../components/ConfirmDialog.js";
-import { Diagram } from "../components/Diagram.js";
-import { Editor } from "../components/Editor.js";
 import { Footer } from "../components/Footer.js";
 import { Navbar } from "../components/Navbar.js";
-import { ResizeHandle } from "../components/ResizeHandle.js";
 import type { TableNodeData } from "../components/TableNode.js";
+import { Workspace } from "../components/Workspace.js";
+import {
+  type EdgeCustomization,
+  type EdgeLayout,
+  type NodeLayout,
+  parseLayout,
+  serializeLayout,
+} from "../layout.js";
 import { clearSandbox, getSandbox, SANDBOX_SEED, setSandbox } from "../sandbox.js";
 import type { Schema } from "../types.js";
 import styles from "./SandboxPage.module.css";
 
-type Layout = Record<string, { x: number; y: number }>;
+type Layout = NodeLayout;
 
 function schemaToNodes(schema: Schema, layout: Layout): Node<TableNodeData>[] {
   return schema.tables.map((table) => ({
@@ -35,25 +39,19 @@ export function SandboxPage() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const initial = getSandbox() ?? SANDBOX_SEED;
-  const initialLayout: Layout = (() => {
-    try {
-      return JSON.parse(initial.layout);
-    } catch {
-      return {};
-    }
-  })();
+  const initialLayout = parseLayout(initial.layout);
   const initialSchema = parseAml(initial.amlContent);
 
   const [title, setTitle] = useState(initial.title);
   const [aml, setAml] = useState(initial.amlContent);
   const [schema, setSchema] = useState<Schema>(initialSchema);
   const [nodes, setNodes] = useState<Node<TableNodeData>[]>(() =>
-    schemaToNodes(initialSchema, initialLayout),
+    schemaToNodes(initialSchema, initialLayout.nodes),
   );
-  const [editorWidth, setEditorWidth] = useState(() => Math.round(window.innerWidth * 0.25));
-  const [referenceOpen, setReferenceOpen] = useState(false);
+  const [edgeLayout, setEdgeLayout] = useState<EdgeLayout>(initialLayout.edges);
   const [confirmReset, setConfirmReset] = useState(false);
-  const layoutRef = useRef<Layout>(initialLayout);
+  const layoutRef = useRef<Layout>(initialLayout.nodes);
+  const edgeLayoutRef = useRef<EdgeLayout>(initialLayout.edges);
 
   // Logged-in users don't need the sandbox; redirect to dashboard.
   useEffect(() => {
@@ -63,14 +61,27 @@ export function SandboxPage() {
   }, [authLoading, user, navigate]);
 
   const persist = useCallback(
-    (next: { title?: string; aml?: string; layout?: Layout }) => {
+    (next: { title?: string; aml?: string; nodes?: Layout; edges?: EdgeLayout }) => {
       setSandbox({
         title: next.title ?? title,
         amlContent: next.aml ?? aml,
-        layout: JSON.stringify(next.layout ?? layoutRef.current),
+        layout: serializeLayout({
+          nodes: next.nodes ?? layoutRef.current,
+          edges: next.edges ?? edgeLayoutRef.current,
+        }),
       });
     },
     [title, aml],
+  );
+
+  const handleEdgeLayoutChange = useCallback(
+    (key: string, patch: EdgeCustomization) => {
+      const next = { ...edgeLayoutRef.current, [key]: { ...edgeLayoutRef.current[key], ...patch } };
+      edgeLayoutRef.current = next;
+      setEdgeLayout(next);
+      persist({ edges: next });
+    },
+    [persist],
   );
 
   const handleTitleChange = useCallback(
@@ -111,7 +122,7 @@ export function SandboxPage() {
             newLayout[node.id] = node.position;
           }
           layoutRef.current = newLayout;
-          persist({ layout: newLayout });
+          persist({ nodes: newLayout });
         }
         return updated;
       });
@@ -119,18 +130,16 @@ export function SandboxPage() {
     [persist],
   );
 
-  const handleResize = useCallback((deltaX: number) => {
-    setEditorWidth((w) => Math.max(200, Math.min(800, w + deltaX)));
-  }, []);
-
   const reset = useCallback(() => {
     clearSandbox();
     const seedSchema = parseAml(SANDBOX_SEED.amlContent);
     layoutRef.current = {};
+    edgeLayoutRef.current = {};
     setTitle(SANDBOX_SEED.title);
     setAml(SANDBOX_SEED.amlContent);
     setSchema(seedSchema);
     setNodes(schemaToNodes(seedSchema, {}));
+    setEdgeLayout({});
   }, []);
 
   const titleArea = (
@@ -162,21 +171,15 @@ export function SandboxPage() {
   return (
     <div className={styles.layout}>
       <Navbar center={titleArea} />
-      <div className={styles.workspace}>
-        <div className={styles.editorPane} style={{ width: editorWidth }}>
-          <Editor
-            value={aml}
-            onChange={handleChange}
-            onToggleReference={() => setReferenceOpen((v) => !v)}
-            referenceOpen={referenceOpen}
-          />
-        </div>
-        <ResizeHandle onResize={handleResize} />
-        <div className={styles.diagramPane}>
-          <Diagram schema={schema} nodes={nodes} onNodesChange={handleNodesChange} />
-          {referenceOpen && <AmlReference onClose={() => setReferenceOpen(false)} />}
-        </div>
-      </div>
+      <Workspace
+        aml={aml}
+        onAmlChange={handleChange}
+        schema={schema}
+        nodes={nodes}
+        onNodesChange={handleNodesChange}
+        edgeLayout={edgeLayout}
+        onEdgeLayoutChange={handleEdgeLayoutChange}
+      />
       <Footer />
       <ConfirmDialog
         open={confirmReset}

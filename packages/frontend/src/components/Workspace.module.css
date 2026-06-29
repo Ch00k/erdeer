@@ -1,0 +1,45 @@
+.workspace {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.editorPane {
+  min-width: 200px;
+  max-width: 800px;
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.diagramPane {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-canvas-bg);
+}
+
+.expandButton {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.expandButton:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
