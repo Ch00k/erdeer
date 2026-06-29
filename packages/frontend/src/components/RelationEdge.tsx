@@ -1,10 +1,45 @@
 import { type EdgeProps, getSmoothStepPath } from "@xyflow/react";
 import type { MouseEvent } from "react";
-import type { EdgeCustomization, EdgeSide } from "../layout.js";
+import type { EdgeCustomization, EdgeRoute, EdgeSide } from "../layout.js";
+import type { Position } from "../types.js";
 
 const SPREAD = 6;
 const LENGTH = 7;
 const FLIP_HANDLE_RADIUS = 10;
+const CORNER_RADIUS = 8;
+const ANCHOR_TOLERANCE = 2;
+
+function near(x: number, y: number, p: Position): boolean {
+  return Math.abs(x - p.x) <= ANCHOR_TOLERANCE && Math.abs(y - p.y) <= ANCHOR_TOLERANCE;
+}
+
+// Builds an orthogonal path through the given points, rounding interior corners.
+function routedPath(points: Position[]): string {
+  if (points.length < 2) return "";
+
+  let d = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 1; i < points.length - 1; i++) {
+    const prev = points[i - 1];
+    const corner = points[i];
+    const next = points[i + 1];
+    const inLen = Math.hypot(corner.x - prev.x, corner.y - prev.y);
+    const outLen = Math.hypot(next.x - corner.x, next.y - corner.y);
+    const r = Math.min(CORNER_RADIUS, inLen / 2, outLen / 2);
+    const before = {
+      x: corner.x - ((corner.x - prev.x) / inLen) * r,
+      y: corner.y - ((corner.y - prev.y) / inLen) * r,
+    };
+    const after = {
+      x: corner.x + ((next.x - corner.x) / outLen) * r,
+      y: corner.y + ((next.y - corner.y) / outLen) * r,
+    };
+    d += ` L ${before.x} ${before.y} Q ${corner.x} ${corner.y} ${after.x} ${after.y}`;
+  }
+  const end = points[points.length - 1];
+  d += ` L ${end.x} ${end.y}`;
+
+  return d;
+}
 
 interface MarkerProps {
   x: number;
@@ -47,6 +82,7 @@ type RelationEdgeData = {
   editable?: boolean;
   relKey?: string;
   onFlip?: (key: string, patch: EdgeCustomization) => void;
+  route?: EdgeRoute;
 };
 
 function FlipHandle({ x, y, onClick }: { x: number; y: number; onClick: (e: MouseEvent) => void }) {
@@ -75,16 +111,28 @@ export function RelationEdge({
   style,
   data,
 }: EdgeProps) {
-  const [path] = getSmoothStepPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-  });
-
   const d = (data ?? {}) as RelationEdgeData;
+
+  // A routed path is drawn only while the live handle positions still match the
+  // anchors the route was computed for. A moved, resized, or re-columned table
+  // shifts a handle, so the edge falls back to a direct smooth-step path until
+  // the next auto-layout.
+  const route = d.route;
+  const path =
+    route &&
+    route.points.length > 0 &&
+    near(sourceX, sourceY, route.src) &&
+    near(targetX, targetY, route.ref)
+      ? routedPath([{ x: sourceX, y: sourceY }, ...route.points, { x: targetX, y: targetY }])
+      : getSmoothStepPath({
+          sourceX,
+          sourceY,
+          targetX,
+          targetY,
+          sourcePosition,
+          targetPosition,
+        })[0];
+
   const srcCardinality = d.srcCardinality ?? "";
   const refCardinality = d.refCardinality ?? "";
   const highlighted = d.highlighted === true;

@@ -52,6 +52,10 @@ export function SchemaPage() {
     setEdgeLayout((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
   }, []);
 
+  const handleEdgeLayoutReplace = useCallback((next: EdgeLayout) => {
+    setEdgeLayout(next);
+  }, []);
+
   const handleNodesChange: OnNodesChange<Node<TableNodeData>> = useCallback((changes) => {
     setNodes((nds) => {
       const updated = applyNodeChanges(changes, nds);
@@ -78,6 +82,7 @@ export function SchemaPage() {
         onNodesChange={handleNodesChange}
         edgeLayout={edgeLayout}
         onEdgeLayoutChange={handleEdgeLayoutChange}
+        onEdgeLayoutReplace={handleEdgeLayoutReplace}
       />
       <Footer />
     </div>

@@ -17,6 +17,7 @@ interface WorkspaceProps {
   onNodesChange: OnNodesChange<Node<TableNodeData>>;
   edgeLayout: EdgeLayout;
   onEdgeLayoutChange: (key: string, patch: EdgeCustomization) => void;
+  onEdgeLayoutReplace: (next: EdgeLayout) => void;
   readOnly?: boolean;
 }
 
@@ -28,6 +29,7 @@ export function Workspace({
   onNodesChange,
   edgeLayout,
   onEdgeLayoutChange,
+  onEdgeLayoutReplace,
   readOnly,
 }: WorkspaceProps) {
   const [editorWidth, setEditorWidth] = useState(() => Math.round(window.innerWidth * 0.25));
@@ -85,6 +87,7 @@ export function Workspace({
           onNodesChange={onNodesChange}
           edgeLayout={edgeLayout}
           onEdgeLayoutChange={onEdgeLayoutChange}
+          onEdgeLayoutReplace={onEdgeLayoutReplace}
           readOnly={readOnly}
         />
         {referenceOpen && <AmlReference onClose={() => setReferenceOpen(false)} />}

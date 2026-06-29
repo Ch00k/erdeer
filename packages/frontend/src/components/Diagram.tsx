@@ -1,5 +1,4 @@
 import {
-  Controls,
   type Edge,
   type EdgeMouseHandler,
   type EdgeTypes,
@@ -14,6 +13,7 @@ import { type EdgeCustomization, type EdgeLayout, relationKey } from "../layout.
 import { useTheme } from "../theme.js";
 import type { Relation, Schema } from "../types.js";
 import styles from "./Diagram.module.css";
+import { DiagramControls } from "./DiagramControls.js";
 import { RelationEdge } from "./RelationEdge.js";
 import { TableNode, type TableNodeData } from "./TableNode.js";
 
@@ -45,6 +45,7 @@ interface DiagramProps {
   onNodesChange: OnNodesChange<Node<TableNodeData>>;
   edgeLayout: EdgeLayout;
   onEdgeLayoutChange: (key: string, patch: EdgeCustomization) => void;
+  onEdgeLayoutReplace: (next: EdgeLayout) => void;
   readOnly?: boolean;
 }
 
@@ -54,6 +55,7 @@ export function Diagram({
   onNodesChange,
   edgeLayout,
   onEdgeLayoutChange,
+  onEdgeLayoutReplace,
   readOnly,
 }: DiagramProps) {
   const { resolvedTheme } = useTheme();
@@ -87,6 +89,7 @@ export function Diagram({
           relKey: key,
           editable: !readOnly,
           onFlip: onEdgeLayoutChange,
+          route: custom.route,
         },
         zIndex: highlighted ? 1 : 0,
       };
@@ -121,7 +124,12 @@ export function Diagram({
         elementsSelectable={false}
         proOptions={{ hideAttribution: true }}
       >
-        <Controls showInteractive={false} />
+        <DiagramControls
+          readOnly={readOnly}
+          relations={schema.relations}
+          onNodesChange={onNodesChange}
+          onEdgeLayoutReplace={onEdgeLayoutReplace}
+        />
       </ReactFlow>
     </div>
   );
