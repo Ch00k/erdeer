@@ -164,6 +164,15 @@ export function DesignerPage() {
     [persistLayout],
   );
 
+  const handleEdgeLayoutReplace = useCallback(
+    (next: EdgeLayout) => {
+      edgeLayoutRef.current = next;
+      setEdgeLayout(next);
+      persistLayout();
+    },
+    [persistLayout],
+  );
+
   const handleNodesChange: OnNodesChange<Node<TableNodeData>> = useCallback(
     (changes) => {
       setNodes((nds) => {
@@ -271,6 +280,7 @@ export function DesignerPage() {
         onNodesChange={handleNodesChange}
         edgeLayout={edgeLayout}
         onEdgeLayoutChange={handleEdgeLayoutChange}
+        onEdgeLayoutReplace={handleEdgeLayoutReplace}
         readOnly={!canEdit}
       />
       <Footer />

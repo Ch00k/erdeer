@@ -84,6 +84,15 @@ export function SandboxPage() {
     [persist],
   );
 
+  const handleEdgeLayoutReplace = useCallback(
+    (next: EdgeLayout) => {
+      edgeLayoutRef.current = next;
+      setEdgeLayout(next);
+      persist({ edges: next });
+    },
+    [persist],
+  );
+
   const handleTitleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newTitle = e.target.value;
@@ -179,6 +188,7 @@ export function SandboxPage() {
         onNodesChange={handleNodesChange}
         edgeLayout={edgeLayout}
         onEdgeLayoutChange={handleEdgeLayoutChange}
+        onEdgeLayoutReplace={handleEdgeLayoutReplace}
       />
       <Footer />
       <ConfirmDialog

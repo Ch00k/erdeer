@@ -4,9 +4,22 @@ export type EdgeSide = "left" | "right";
 
 export type NodeLayout = Record<string, Position>;
 
+// A connector route produced by auto-layout. `points` are the orthogonal bend
+// points in flow coordinates; `src`/`ref` are the handle anchor points the
+// route starts/ends at. An edge whose live handle positions no longer match
+// those anchors - a moved table, a resized table, or an added/reordered column
+// shifting a handle - detects its route is stale and falls back to direct
+// routing.
+export interface EdgeRoute {
+  points: Position[];
+  src: Position;
+  ref: Position;
+}
+
 export interface EdgeCustomization {
   srcSide?: EdgeSide;
   refSide?: EdgeSide;
+  route?: EdgeRoute;
 }
 
 export type EdgeLayout = Record<string, EdgeCustomization>;
