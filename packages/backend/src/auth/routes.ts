@@ -47,6 +47,10 @@ async function fetchGitHubUser(accessToken: string): Promise<ProviderUserInfo> {
       headers: { Authorization: `Bearer ${accessToken}` },
     }),
   ]);
+  if (!userRes.ok || !emailsRes.ok) {
+    throw new Error("Failed to fetch GitHub user");
+  }
+
   const user = await userRes.json();
   const emails: Array<{ email: string; primary: boolean; verified: boolean }> =
     await emailsRes.json();
@@ -80,6 +84,10 @@ async function fetchGitLabUser(accessToken: string): Promise<ProviderUserInfo> {
   const userRes = await fetch("https://gitlab.com/api/v4/user", {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
+  if (!userRes.ok) {
+    throw new Error("Failed to fetch GitLab user");
+  }
+
   const user = await userRes.json();
   return {
     id: String(user.id),
@@ -257,14 +265,14 @@ export function registerAuthRoutes(
   }
 
   // Logout
-  app.get("/auth/logout", async (req, reply) => {
+  app.post("/auth/logout", async (req, reply) => {
     const sessionId = (req.cookies as Record<string, string>).session;
     if (sessionId) {
       const { deleteSession } = await import("./session.js");
       await deleteSession(sessionId);
     }
     reply.clearCookie("session", COOKIE_OPTIONS);
-    return reply.redirect("/");
+    return { ok: true };
   });
 
   // Current user

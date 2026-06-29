@@ -18,7 +18,12 @@ import { emitDiagramListChanged, emitDiagramUpdate, getAffectedUserIds } from ".
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const amlSpecPath = resolve(__dirname, "../../../../docs/aml-spec.md");
 
-const transports = new Map<string, StreamableHTTPServerTransport>();
+interface McpSession {
+  transport: StreamableHTTPServerTransport;
+  userId: string;
+}
+
+const sessions = new Map<string, McpSession>();
 
 function createMcpServer(userId: string): McpServer {
   const server = new McpServer({
@@ -307,20 +312,27 @@ export async function registerMcpRoutes(app: FastifyInstance) {
     const userId = (req as any).userId as string;
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
 
-    if (sessionId && transports.has(sessionId)) {
-      const transport = transports.get(sessionId)!;
-      await transport.handleRequest(req.raw, reply.raw, req.body);
+    if (sessionId && sessions.has(sessionId)) {
+      const session = sessions.get(sessionId)!;
+      if (session.userId !== userId) {
+        return reply.status(403).send({
+          jsonrpc: "2.0",
+          error: { code: -32000, message: "Forbidden: session belongs to another user" },
+          id: null,
+        });
+      }
+      await session.transport.handleRequest(req.raw, reply.raw, req.body);
     } else if (!sessionId && isInitializeRequest(req.body)) {
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         onsessioninitialized: (id) => {
-          transports.set(id, transport);
+          sessions.set(id, { transport, userId });
         },
       });
 
       transport.onclose = () => {
         if (transport.sessionId) {
-          transports.delete(transport.sessionId);
+          sessions.delete(transport.sessionId);
         }
       };
 
@@ -341,10 +353,10 @@ export async function registerMcpRoutes(app: FastifyInstance) {
     await requireTokenAuth(req, reply);
     if (reply.sent) return;
 
+    const userId = (req as any).userId as string;
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    if (sessionId && transports.has(sessionId)) {
-      const transport = transports.get(sessionId)!;
-      await transport.handleRequest(req.raw, reply.raw);
+    if (sessionId && sessions.get(sessionId)?.userId === userId) {
+      await sessions.get(sessionId)!.transport.handleRequest(req.raw, reply.raw);
     } else {
       reply.status(400).send({
         jsonrpc: "2.0",
@@ -359,10 +371,10 @@ export async function registerMcpRoutes(app: FastifyInstance) {
     await requireTokenAuth(req, reply);
     if (reply.sent) return;
 
+    const userId = (req as any).userId as string;
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    if (sessionId && transports.has(sessionId)) {
-      const transport = transports.get(sessionId)!;
-      await transport.handleRequest(req.raw, reply.raw);
+    if (sessionId && sessions.get(sessionId)?.userId === userId) {
+      await sessions.get(sessionId)!.transport.handleRequest(req.raw, reply.raw);
     } else {
       reply.status(400).send({
         jsonrpc: "2.0",

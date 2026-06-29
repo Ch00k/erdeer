@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import cookie from "@fastify/cookie";
+import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import Fastify from "fastify";
@@ -21,9 +22,24 @@ if (existsSync(migrationsFolder)) {
   migrate(db, { migrationsFolder });
 }
 
-const app = Fastify({ logger: true });
+// Trust only loopback/private hops (a co-located Caddy or Fly's proxy) when
+// deriving req.ip from X-Forwarded-For, so the client address is the one a
+// trusted proxy appended rather than a value the client can spoof.
+const app = Fastify({ logger: true, trustProxy: "loopback, linklocal, uniquelocal" });
 
 await app.register(cookie);
+
+await app.register(rateLimit, {
+  max: 300,
+  timeWindow: "1 minute",
+  keyGenerator: (req) => {
+    // On Fly the X-Forwarded-For chain is not safe to key on; Fly Proxy sets
+    // Fly-Client-IP to the real client address and overwrites any client-supplied
+    // value. Fall back to the proxy-trusted req.ip for non-Fly deployments.
+    const flyClientIp = req.headers["fly-client-ip"];
+    return (typeof flyClientIp === "string" && flyClientIp) || req.ip;
+  },
+});
 
 app.get("/health", async () => {
   return { status: "ok" };
@@ -32,7 +48,11 @@ app.get("/health", async () => {
 const port = Number(process.env.PORT) || 3001;
 const baseUrl = process.env.BASE_URL || "http://localhost:7000";
 
-if (process.env.DEV_AUTO_LOGIN) {
+if (process.env.DEV_AUTO_LOGIN && process.env.NODE_ENV === "production") {
+  app.log.warn("DEV_AUTO_LOGIN is set but ignored in production");
+}
+
+if (process.env.DEV_AUTO_LOGIN && process.env.NODE_ENV !== "production") {
   const { ensureDevSession } = await import("./auth/dev.js");
   const devSessionId = await ensureDevSession();
   app.addHook("onRequest", async (req, reply) => {

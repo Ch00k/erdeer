@@ -1,5 +1,5 @@
 import type {} from "@fastify/cookie";
-import { and, eq, like } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { requireAuth } from "../auth/middleware.js";
 import { generateId } from "../auth/session.js";
@@ -139,25 +139,6 @@ export async function registerTeamRoutes(app: FastifyInstance) {
         .run();
 
       return { ok: true };
-    });
-
-    // Search users by email
-    scoped.get("/api/users/search", async (req, reply) => {
-      const { email } = req.query as { email?: string };
-      if (!email || email.length < 3) {
-        return reply.status(400).send({ error: "Query must be at least 3 characters" });
-      }
-
-      return db
-        .select({
-          id: users.id,
-          email: users.email,
-          name: users.name,
-        })
-        .from(users)
-        .where(like(users.email, `%${email}%`))
-        .limit(10)
-        .all();
     });
 
     // Invite a user to a team (owner only)

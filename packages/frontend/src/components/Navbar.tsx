@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { deleteAccount } from "../api.js";
+import { deleteAccount, logout } from "../api.js";
 import { useAuth } from "../auth.js";
 import { useTheme } from "../theme.js";
 import { ConfirmDialog } from "./ConfirmDialog.js";
@@ -39,9 +39,10 @@ export function Navbar({ center }: NavbarProps) {
     setConfirmAction("deleteAccount");
   };
 
-  const confirmSignOut = () => {
+  const confirmSignOut = async () => {
     setConfirmAction(null);
-    window.location.href = "/auth/logout";
+    await logout();
+    window.location.href = "/";
   };
 
   const confirmDeleteAccount = async () => {

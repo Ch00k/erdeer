@@ -63,11 +63,11 @@ Version 0.1.0 - **beta**.
 - `src/auth/dev.ts` - Dev mode auto-login: seeds a dev user and stable session on startup
 - `src/auth/providers.ts` - Arctic OAuth provider setup (GitHub, Google, GitLab)
 - `src/auth/session.ts` - Session creation, validation (with auto-extend), deletion
-- `src/auth/routes.ts` - OAuth login/callback routes, logout, /auth/me, /auth/providers endpoints
+- `src/auth/routes.ts` - OAuth login/callback routes, logout (POST), /auth/me, /auth/providers endpoints
 - `src/auth/middleware.ts` - `requireAuth` hook (rejects unauth) and `optionalAuth` hook (attaches userId if a session exists, otherwise passes through)
 - `src/auth/token.ts` - API token creation, hashing, and bearer token auth middleware
 - `src/diagrams/routes.ts` - Diagram CRUD API (personal/team list, get, create, update, delete). `GET /api/diagrams/:id` and the per-diagram SSE endpoint use `optionalAuth`: anonymous reads succeed when `visibility = 'public'`. The GET response includes a `canEdit` flag derived from session + ownership/team membership. `PUT` accepts a `visibility` field but only the owner can change it.
-- `src/teams/routes.ts` - Team CRUD API (list, create, members, invitations, user search, account deletion)
+- `src/teams/routes.ts` - Team CRUD API (list, create, members, invitations, account deletion). Invitations are addressed by typed email; there is no user-search/enumeration endpoint.
 - `src/tokens/routes.ts` - API token management (list, create, revoke) - session-auth protected
 - `src/events.ts` - In-memory event bus for diagram update notifications (used by SSE endpoint)
 - `src/mcp/server.ts` - MCP server with Streamable HTTP transport, diagram CRUD tools, AML spec resource
@@ -87,7 +87,8 @@ Version 0.1.0 - **beta**.
 - **Drizzle ORM** + **better-sqlite3** for database (lightweight, SQL-like, good TypeScript inference)
 - **SQLite** for storage (WAL mode, foreign keys enabled)
 - **Arctic** for OAuth (GitHub, Google, GitLab) - lightweight, TypeScript-first OAuth 2.0 clients
-- **Server-side sessions** stored in SQLite with HTTP-only cookies (30-day expiry, auto-extend at halfway)
+- **Server-side sessions** stored in SQLite with HTTP-only cookies (30-day expiry, auto-extend at halfway). The cookie's `Secure` flag is set when `NODE_ENV === "production"`, which the Docker image sets
+- **Rate limiting** via `@fastify/rate-limit` (global 300 requests/minute per client IP). The limiter keys on `Fly-Client-IP` (set and overwritten by Fly's proxy, so not client-spoofable), falling back to `req.ip`. `trustProxy` trusts only loopback/private hops, so `req.ip` comes from a proxy-appended `X-Forwarded-For` entry rather than a client-supplied one
 - **OAuth state** stored in-memory Map (not cookies) to avoid Vite proxy cookie issues in dev
 - **Auto-migration** on startup via drizzle-orm migrator
 - **Static file serving** via @fastify/static in production (backend serves frontend dist)
@@ -116,7 +117,7 @@ Exposes diagram CRUD and AML validation via MCP (Model Context Protocol) at `POS
 
 **Resources**: `aml://spec` - AML language specification (docs/aml-spec.md)
 
-**Transport**: Streamable HTTP (stateful sessions). Supports POST (requests), GET (SSE streams), DELETE (session cleanup).
+**Transport**: Streamable HTTP (stateful sessions). Supports POST (requests), GET (SSE streams), DELETE (session cleanup). Each transport session is bound to the user who initialized it; requests reusing an `mcp-session-id` are rejected (403) when the authenticated token belongs to a different user.
 
 ## Environment variables
 
@@ -127,7 +128,8 @@ Exposes diagram CRUD and AML validation via MCP (Model Context Protocol) at `POS
 - `DATABASE_PATH` - SQLite database path (default: `data/db.sqlite`)
 - `PORT` - Server port (default: `3001`)
 - `HOST` - Bind address (default: `127.0.0.1`)
-- `DEV_AUTO_LOGIN` - Set to any value to auto-create a dev user and stamp its session cookie, bypassing OAuth login. Unset it to test as an anonymous visitor (server restart required).
+- `DEV_AUTO_LOGIN` - Set to any value to auto-create a dev user and stamp its session cookie, bypassing OAuth login. Ignored when `NODE_ENV === "production"`. Unset it to test as an anonymous visitor (server restart required).
+- `NODE_ENV` - Set to `production` by the Docker image. Enables the session cookie's `Secure` flag and disables `DEV_AUTO_LOGIN`.
 
 At least one OAuth provider must be configured in production. In dev, set `DEV_AUTO_LOGIN=1` to skip OAuth entirely.
 
