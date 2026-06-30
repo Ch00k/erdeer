@@ -1,0 +1,37 @@
+name: Release
+
+on:
+  push:
+    tags: ["[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: oven-sh/setup-bun@v2
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @erdeer/shared run build
+
+      # Bun cross-compiles every target from this one runner, so no build matrix.
+      - name: Build binaries
+        working-directory: packages/cli
+        run: |
+          for target in bun-linux-x64 bun-linux-arm64 bun-darwin-x64 bun-darwin-arm64 bun-windows-x64; do
+            ext=""
+            [ "$target" = "bun-windows-x64" ] && ext=".exe"
+            bun build --compile --target="$target" src/index.ts --outfile "dist/erdeer-${target#bun-}${ext}"
+          done
+
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: packages/cli/dist/erdeer-*

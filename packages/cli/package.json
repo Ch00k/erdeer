@@ -1,0 +1,21 @@
+{
+  "name": "erdeer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "erdeer": "dist/index.js"
+  },
+  "dependencies": {
+    "@erdeer/shared": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "build:binary": "bun build --compile src/index.ts --outfile dist/erdeer"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.130",
+    "typescript": "^6.0.2"
+  }
+}
