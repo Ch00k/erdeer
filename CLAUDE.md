@@ -11,7 +11,8 @@ Version 0.1.0 - **beta**.
 - **Monorepo** with pnpm workspaces
 - `packages/frontend` - React + TypeScript + Vite + CSS Modules
 - `packages/backend` - Node.js + TypeScript + Fastify + Drizzle ORM + SQLite
-- `packages/shared` - Shared types
+- `packages/shared` - Shared types and `validateAml` (the single source of AML validation, used by both the MCP `validate_aml` tool and the CLI)
+- `packages/cli` - `erdeer` command-line tool for local AML validation, shipped as a Bun-compiled binary via GitHub Releases
 
 ### Frontend structure
 
@@ -117,7 +118,18 @@ Exposes diagram CRUD and AML validation via MCP (Model Context Protocol) at `POS
 
 **Resources**: `aml://spec` - AML language specification (docs/aml-spec.md)
 
+**CLI preference**: The `validate_aml` tool description and the server `instructions` field both steer agents to prefer the local `erdeer` CLI (`erdeer validate <file>`) when it is on PATH, falling back to the tool otherwise. The CLI and the tool share `validateAml` from `@erdeer/shared`, so their results are identical.
+
 **Transport**: Streamable HTTP (stateful sessions). Supports POST (requests), GET (SSE streams), DELETE (session cleanup). Each transport session is bound to the user who initialized it; requests reusing an `mcp-session-id` are rejected (403) when the authenticated token belongs to a different user.
+
+## CLI
+
+`packages/cli` builds the `erdeer` command for local AML validation, so an agent can validate without an MCP round-trip.
+
+- **Command**: `erdeer validate [file] [--json]`. Reads AML from the file argument, or from stdin if no file is given (or `-`), matching the string-content model of the MCP `validate_aml` tool. Exit codes: `0` valid, `1` invalid AML, `2` usage or I/O error. Default output is human-readable; `--json` emits the same shape as the MCP tool.
+- **Shared logic**: imports `validateAml` from `@erdeer/shared` - no parsing logic of its own.
+- **Distribution**: standalone binaries built with `bun build --compile` and attached to GitHub Releases by `.github/workflows/release.yml`, triggered on `X.Y.Z` tag pushes. Bun cross-compiles all five targets (`linux-x64`, `linux-arm64`, `darwin-x64`, `darwin-arm64`, `windows-x64.exe`) from a single runner. The package is `private` and not published to npm.
+- **Why Bun, not Node**: `@azimutt/aml` imports its `package.json` without a `type: json` import attribute, which Node 23+ rejects (the backend sidesteps this by running through `tsx`). Bun handles attribute-less JSON imports natively, so the compiled binary runs everywhere regardless of the host's Node version.
 
 ## Environment variables
 

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseAml } from "@azimutt/aml";
+import { validateAml } from "@erdeer/shared";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
@@ -26,10 +26,16 @@ interface McpSession {
 const sessions = new Map<string, McpSession>();
 
 function createMcpServer(userId: string): McpServer {
-  const server = new McpServer({
-    name: "erdeer",
-    version: "0.1.0",
-  });
+  const server = new McpServer(
+    {
+      name: "erdeer",
+      version: "0.1.0",
+    },
+    {
+      instructions:
+        "For validating AML, prefer the local `erdeer` CLI if it is on PATH (`erdeer validate <file>`), which is faster and works offline. Use the validate_aml tool only when the CLI is unavailable.",
+    },
+  );
 
   // Resource: AML spec
   server.resource(
@@ -248,53 +254,19 @@ function createMcpServer(userId: string): McpServer {
   // Tool: validate_aml
   server.tool(
     "validate_aml",
-    "Validate AML content and return any parse errors",
+    "Validate AML content and return any parse errors. Prefer the local `erdeer` CLI if it is on PATH (`erdeer validate <file>`), which is faster and works offline; use this tool only when the CLI is unavailable.",
     { amlContent: z.string().describe("AML content to validate") },
     async ({ amlContent }) => {
-      const result = parseAml(amlContent);
-
-      if (result.errors && result.errors.length > 0) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(
-                {
-                  valid: false,
-                  errors: result.errors.map((e: any) => ({
-                    message: e.message,
-                    position: e.position,
-                  })),
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-          isError: true,
-        };
-      }
-
-      const entityCount = result.result?.entities?.length ?? 0;
-      const relationCount = result.result?.relations?.length ?? 0;
-      const typeCount = result.result?.types?.length ?? 0;
+      const result = validateAml(amlContent);
 
       return {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(
-              {
-                valid: true,
-                entities: entityCount,
-                relations: relationCount,
-                types: typeCount,
-              },
-              null,
-              2,
-            ),
+            text: JSON.stringify(result, null, 2),
           },
         ],
+        isError: !result.valid,
       };
     },
   );

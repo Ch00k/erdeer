@@ -4,12 +4,14 @@ install:
 	pnpm install
 
 dev:
+	pnpm --filter @erdeer/shared run build
 	pnpm --parallel -r run dev
 
 build:
 	pnpm -r run build
 
 lint:
+	pnpm --filter @erdeer/shared run build
 	pnpm -r run typecheck
 	pnpm exec biome check --write .
 
