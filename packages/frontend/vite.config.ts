@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
@@ -10,8 +11,26 @@ const monacoThemesDir = fileURLToPath(
   new URL("./node_modules/monaco-themes/themes", import.meta.url),
 );
 
+// Release builds (Docker, CI) pass the git tag via ERDEER_VERSION since .git
+// is not in the build context; local builds derive the version from git
+// (the exact tag on a tagged commit, tag-distance-sha otherwise).
+function resolveVersion(): string {
+  if (process.env.ERDEER_VERSION) return process.env.ERDEER_VERSION;
+
+  try {
+    return execSync("git describe --tags --always", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
+  } catch {
+    return "dev";
+  }
+}
+
 export default defineConfig({
   plugins: [react()],
+  define: {
+    __ERDEER_VERSION__: JSON.stringify(resolveVersion()),
+  },
   resolve: {
     alias: {
       "monaco-themes-data": monacoThemesDir,

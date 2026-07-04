@@ -15,6 +15,11 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
+# .git is not in the build context, so the version cannot be derived here;
+# CI passes the release tag.
+ARG ERDEER_VERSION
+ENV ERDEER_VERSION=$ERDEER_VERSION
+
 RUN pnpm -r run build
 
 # ---
@@ -38,7 +43,13 @@ COPY --from=build /app/packages/backend/dist packages/backend/dist
 COPY --from=build /app/packages/backend/drizzle packages/backend/drizzle
 COPY --from=build /app/packages/frontend/dist packages/frontend/dist
 COPY --from=build /app/docs docs
-COPY --from=build /app/node_modules/.pnpm/better-sqlite3@12.8.0/node_modules/better-sqlite3/build node_modules/.pnpm/better-sqlite3@12.8.0/node_modules/better-sqlite3/build
+# The pnpm store path embeds the exact better-sqlite3 version; glob it so a
+# lockfile bump doesn't break this stage. COPY cannot glob the destination,
+# hence the temp dir + RUN.
+COPY --from=build /app/node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3/build /tmp/better-sqlite3-build
+RUN dest=$(echo node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3) && \
+    cp -r /tmp/better-sqlite3-build "$dest/build" && \
+    rm -rf /tmp/better-sqlite3-build
 
 WORKDIR /app/packages/backend
 CMD ["node", "--import", "tsx/esm", "dist/server.js"]

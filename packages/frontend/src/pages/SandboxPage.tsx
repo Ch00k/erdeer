@@ -15,25 +15,12 @@ import {
   parseLayout,
   serializeLayout,
 } from "../layout.js";
+import { schemaToNodes } from "../nodes.js";
 import { clearSandbox, getSandbox, SANDBOX_SEED, setSandbox } from "../sandbox.js";
 import type { Schema } from "../types.js";
 import styles from "./SandboxPage.module.css";
 
 type Layout = NodeLayout;
-
-function schemaToNodes(schema: Schema, layout: Layout): Node<TableNodeData>[] {
-  return schema.tables.map((table) => ({
-    id: table.name,
-    type: "table",
-    position: layout[table.name] ?? table.position,
-    data: {
-      label: table.name,
-      schema: table.schema,
-      columns: table.columns,
-      comment: table.comment,
-    },
-  }));
-}
 
 export function SandboxPage() {
   const navigate = useNavigate();
@@ -189,6 +176,7 @@ export function SandboxPage() {
         edgeLayout={edgeLayout}
         onEdgeLayoutChange={handleEdgeLayoutChange}
         onEdgeLayoutReplace={handleEdgeLayoutReplace}
+        exportTitle={title}
       />
       <Footer />
       <ConfirmDialog

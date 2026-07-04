@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateAml } from "@erdeer/shared";
+import { exportFilename, validateAml } from "@erdeer/shared";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
@@ -13,6 +13,7 @@ import { generateId } from "../auth/session.js";
 import { requireTokenAuth } from "../auth/token.js";
 import { db } from "../db/connection.js";
 import { diagrams, teamMembers, teams } from "../db/schema.js";
+import { userCanEdit, userCanRead } from "../diagrams/access.js";
 import { emitDiagramListChanged, emitDiagramUpdate, getAffectedUserIds } from "../events.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -25,7 +26,7 @@ interface McpSession {
 
 const sessions = new Map<string, McpSession>();
 
-function createMcpServer(userId: string): McpServer {
+function createMcpServer(userId: string, baseUrl: string): McpServer {
   const server = new McpServer(
     {
       name: "erdeer",
@@ -33,7 +34,7 @@ function createMcpServer(userId: string): McpServer {
     },
     {
       instructions:
-        "For validating AML, prefer the local `erdeer` CLI if it is on PATH (`erdeer validate <file>`), which is faster and works offline. Use the validate_aml tool only when the CLI is unavailable.",
+        "Prefer the local `erdeer` CLI if it is on PATH over the equivalent tools here: `erdeer validate <file>` (faster and offline) over validate_aml, `erdeer upload <file>` (validates locally first) over create_diagram, and `erdeer export <diagram-id>` (downloads and saves in one step) over export_diagram. For upload/export, pass the same bearer token via --token or ERDEER_TOKEN, and the server URL via --server or ERDEER_SERVER when not the default. Use the tools when the CLI is unavailable or the content is not in a file.",
     },
   );
 
@@ -123,19 +124,8 @@ function createMcpServer(userId: string): McpServer {
         return { content: [{ type: "text" as const, text: "Diagram not found" }], isError: true };
       }
 
-      if (diagram.ownerUserId !== userId) {
-        if (diagram.teamId) {
-          const membership = await db
-            .select()
-            .from(teamMembers)
-            .where(and(eq(teamMembers.teamId, diagram.teamId), eq(teamMembers.userId, userId)))
-            .get();
-          if (!membership) {
-            return { content: [{ type: "text" as const, text: "Access denied" }], isError: true };
-          }
-        } else {
-          return { content: [{ type: "text" as const, text: "Access denied" }], isError: true };
-        }
+      if (!userCanEdit(diagram, userId)) {
+        return { content: [{ type: "text" as const, text: "Access denied" }], isError: true };
       }
 
       return {
@@ -147,7 +137,7 @@ function createMcpServer(userId: string): McpServer {
   // Tool: create_diagram
   server.tool(
     "create_diagram",
-    "Create a new diagram with AML content",
+    "Create a new diagram with AML content. If the content is in a file and the local `erdeer` CLI is on PATH, prefer `erdeer upload <file> --token <bearer token>`, which validates locally first; use this tool when the CLI is unavailable.",
     {
       title: z.string().describe("Diagram title"),
       amlContent: z.string().describe("AML schema content"),
@@ -193,19 +183,8 @@ function createMcpServer(userId: string): McpServer {
         return { content: [{ type: "text" as const, text: "Diagram not found" }], isError: true };
       }
 
-      if (diagram.ownerUserId !== userId) {
-        if (diagram.teamId) {
-          const membership = await db
-            .select()
-            .from(teamMembers)
-            .where(and(eq(teamMembers.teamId, diagram.teamId), eq(teamMembers.userId, userId)))
-            .get();
-          if (!membership) {
-            return { content: [{ type: "text" as const, text: "Access denied" }], isError: true };
-          }
-        } else {
-          return { content: [{ type: "text" as const, text: "Access denied" }], isError: true };
-        }
+      if (!userCanEdit(diagram, userId)) {
+        return { content: [{ type: "text" as const, text: "Access denied" }], isError: true };
       }
 
       const updates: Record<string, any> = { updatedAt: new Date() };
@@ -251,6 +230,32 @@ function createMcpServer(userId: string): McpServer {
     },
   );
 
+  // Tool: export_diagram
+  server.tool(
+    "export_diagram",
+    "Export a diagram as a self-contained interactive HTML file (diagram + AML source, works offline, ~400 kB). If the local `erdeer` CLI is on PATH, prefer `erdeer export <diagram-id> --token <bearer token>`, which downloads and saves in one step. This tool returns the download URL; fetch it with the same bearer token and save the response to a file rather than reading it, e.g. `curl -H 'Authorization: Bearer erd_...' -o <filename> <url>`.",
+    { id: z.string().describe("Diagram ID") },
+    async ({ id }) => {
+      const diagram = await db.select().from(diagrams).where(eq(diagrams.id, id)).get();
+
+      if (!diagram) {
+        return { content: [{ type: "text" as const, text: "Diagram not found" }], isError: true };
+      }
+
+      if (!userCanRead(diagram, userId)) {
+        return { content: [{ type: "text" as const, text: "Access denied" }], isError: true };
+      }
+
+      const result = {
+        url: `${baseUrl}/api/diagrams/${id}/export`,
+        filename: exportFilename(diagram.title),
+      };
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
+      };
+    },
+  );
+
   // Tool: validate_aml
   server.tool(
     "validate_aml",
@@ -274,7 +279,7 @@ function createMcpServer(userId: string): McpServer {
   return server;
 }
 
-export async function registerMcpRoutes(app: FastifyInstance) {
+export async function registerMcpRoutes(app: FastifyInstance, baseUrl: string) {
   // MCP endpoint - token auth, then handle via MCP transport
   app.post("/mcp", async (req, reply) => {
     // Authenticate
@@ -308,7 +313,7 @@ export async function registerMcpRoutes(app: FastifyInstance) {
         }
       };
 
-      const mcpServer = createMcpServer(userId);
+      const mcpServer = createMcpServer(userId, baseUrl);
       await mcpServer.connect(transport);
       await transport.handleRequest(req.raw, reply.raw, req.body);
     } else {

@@ -3,10 +3,17 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["[0-9]+.[0-9]+.[0-9]+"]
   pull_request:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+# The release and deploy jobs require a tag ref, so pushes to main and PRs
+# only lint, and a workflow_dispatch from a branch is lint-only: production
+# only ever deploys from a release tag.
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -20,9 +27,43 @@ jobs:
       - run: make install
       - run: make lint
 
-  deploy:
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
     needs: lint
-    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: oven-sh/setup-bun@v2
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @erdeer/shared run build
+
+      # Bun cross-compiles every target from this one runner, so no build matrix.
+      - name: Build binaries
+        working-directory: packages/cli
+        run: |
+          for target in bun-linux-x64 bun-linux-arm64 bun-darwin-x64 bun-darwin-arm64 bun-windows-x64; do
+            ext=""
+            [ "$target" = "bun-windows-x64" ] && ext=".exe"
+            bun build --compile --target="$target" \
+              --define "ERDEER_VERSION=\"${GITHUB_REF_NAME}\"" \
+              src/index.ts --outfile "dist/erdeer-${target#bun-}${ext}"
+          done
+
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: packages/cli/dist/erdeer-*
+
+  deploy:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: lint
     runs-on: ubuntu-latest
     concurrency:
       group: deploy
@@ -39,7 +80,9 @@ jobs:
         with:
           context: .
           load: true
-          tags: registry.fly.io/erdeer:${{ github.sha }}
+          tags: registry.fly.io/erdeer:${{ github.ref_name }}
+          build-args: |
+            ERDEER_VERSION=${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -50,9 +93,9 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
           flyctl auth docker
-          docker push registry.fly.io/erdeer:${{ github.sha }}
+          docker push registry.fly.io/erdeer:${{ github.ref_name }}
 
       - name: Deploy
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: flyctl deploy --app erdeer --image registry.fly.io/erdeer:${{ github.sha }}
+        run: flyctl deploy --app erdeer --image registry.fly.io/erdeer:${{ github.ref_name }}

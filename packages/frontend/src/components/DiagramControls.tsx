@@ -23,6 +23,9 @@ interface DiagramControlsProps {
   relations: Relation[];
   onNodesChange: OnNodesChange<Node<TableNodeData>>;
   onEdgeLayoutReplace: (next: EdgeLayout) => void;
+  // Enables the export button; absent in the export viewer itself, where
+  // there is no server to fetch the viewer template from.
+  onExport?: () => void;
 }
 
 interface PortColumn {
@@ -91,11 +94,22 @@ function WorkflowIcon() {
   );
 }
 
+function DownloadIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M12 15V3" />
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <path d="m7 10 5 5 5-5" />
+    </svg>
+  );
+}
+
 export function DiagramControls({
   readOnly,
   relations,
   onNodesChange,
   onEdgeLayoutReplace,
+  onExport,
 }: DiagramControlsProps) {
   const { zoomIn, zoomOut, fitView, getNodes, getInternalNode } =
     useReactFlow<Node<TableNodeData>>();
@@ -199,6 +213,11 @@ export function DiagramControls({
         <ControlButton onClick={() => fitView()} title="Fit view">
           <MaximizeIcon />
         </ControlButton>
+        {onExport && (
+          <ControlButton onClick={onExport} title="Export as HTML">
+            <DownloadIcon />
+          </ControlButton>
+        )}
         {!readOnly && (
           <ControlButton
             onClick={() => setConfirmOpen(true)}

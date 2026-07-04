@@ -25,6 +25,12 @@ const edgeTypes: EdgeTypes = {
   relation: RelationEdge,
 };
 
+// React Flow gives nodes `pointer-events: none` unless they are selectable,
+// draggable, or have a node-level mouse handler. Read-only views disable the
+// first two, which would also disable the table/column hover tooltips, so
+// this no-op handler keeps pointer events on.
+const keepNodePointerEvents = () => {};
+
 function cardinalityLabels(cardinality: Relation["cardinality"]): {
   srcCardinality: string;
   refCardinality: string;
@@ -47,6 +53,7 @@ interface DiagramProps {
   onEdgeLayoutChange: (key: string, patch: EdgeCustomization) => void;
   onEdgeLayoutReplace: (next: EdgeLayout) => void;
   readOnly?: boolean;
+  onExport?: () => void;
 }
 
 export function Diagram({
@@ -57,6 +64,7 @@ export function Diagram({
   onEdgeLayoutChange,
   onEdgeLayoutReplace,
   readOnly,
+  onExport,
 }: DiagramProps) {
   const { resolvedTheme } = useTheme();
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
@@ -112,6 +120,7 @@ export function Diagram({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
+        onNodeMouseEnter={keepNodePointerEvents}
         onEdgeClick={onEdgeClick}
         onPaneClick={onPaneClick}
         colorMode={resolvedTheme}
@@ -129,6 +138,7 @@ export function Diagram({
           relations={schema.relations}
           onNodesChange={onNodesChange}
           onEdgeLayoutReplace={onEdgeLayoutReplace}
+          onExport={onExport}
         />
       </ReactFlow>
     </div>

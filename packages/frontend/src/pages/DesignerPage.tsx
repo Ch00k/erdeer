@@ -15,24 +15,11 @@ import {
   parseLayout,
   serializeLayout,
 } from "../layout.js";
+import { schemaToNodes } from "../nodes.js";
 import type { Schema } from "../types.js";
 import styles from "./DesignerPage.module.css";
 
 type Layout = NodeLayout;
-
-function schemaToNodes(schema: Schema, layout: Layout): Node<TableNodeData>[] {
-  return schema.tables.map((table) => ({
-    id: table.name,
-    type: "table",
-    position: layout[table.name] ?? table.position,
-    data: {
-      label: table.name,
-      schema: table.schema,
-      columns: table.columns,
-      comment: table.comment,
-    },
-  }));
-}
 
 export function DesignerPage() {
   const { id } = useParams<{ id: string }>();
@@ -282,6 +269,7 @@ export function DesignerPage() {
         onEdgeLayoutChange={handleEdgeLayoutChange}
         onEdgeLayoutReplace={handleEdgeLayoutReplace}
         readOnly={!canEdit}
+        exportTitle={title}
       />
       <Footer />
     </div>
