@@ -1,0 +1,38 @@
+.code {
+  margin: 0;
+  padding: 16px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 20px;
+  tab-size: 2;
+  color: var(--color-text);
+}
+
+.entity {
+  font-weight: 600;
+}
+
+.attribute {
+  color: var(--color-text);
+}
+
+.type {
+  color: var(--color-uq);
+}
+
+.keyword {
+  color: var(--color-primary);
+}
+
+.operators {
+  color: var(--color-pk);
+}
+
+.comment {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.commentDoc {
+  color: var(--color-success);
+}

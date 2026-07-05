@@ -12,7 +12,7 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "build:binary": "bun build --compile src/index.ts --outfile dist/erdeer"
+    "build:binary": "bun build --compile --define \"ERDEER_VERSION=\\\"$(git describe --tags --always)\\\"\" src/index.ts --outfile dist/erdeer"
   },
   "devDependencies": {
     "@types/node": "^18.19.130",

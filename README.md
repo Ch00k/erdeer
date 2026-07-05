@@ -7,6 +7,7 @@ Browser-based database schema designer using [AML](https://aml-lang.org/) (Azimu
 - AML editor with syntax highlighting (Monaco)
 - Live diagram rendering with pan, zoom, and drag (React Flow)
 - Personal and team-based diagram management
+- Export as a self-contained interactive HTML file with diagram and AML source (shareable, works offline)
 - OAuth sign-in (GitHub, Google, GitLab)
 - MCP server for AI-assisted schema editing
 - API token management
@@ -41,7 +42,7 @@ make db-reset     # delete database and re-run migrations
 
 Deployed to [Fly.io](https://fly.io) as a single machine backed by one persistent volume (SQLite is a local file, so the app must not be scaled beyond one machine). Config lives in `fly.toml`.
 
-Deploys run from GitHub Actions (`.github/workflows/ci.yml`): on every push to `main` the workflow lints, builds the Docker image in the runner, pushes it to Fly's registry (`registry.fly.io`), and runs `fly deploy --image`. Fly's own builder is not used.
+Deploys run from GitHub Actions (`.github/workflows/ci.yml`): pushing an `X.Y.Z` tag lints, publishes the CLI binaries to a GitHub Release, builds the Docker image in the runner, pushes it to Fly's registry (`registry.fly.io`), and runs `fly deploy --image`. Fly's own builder is not used. Production only deploys from tags; pushes to `main` and pull requests just lint.
 
 First-time setup:
 
@@ -77,7 +78,7 @@ OAuth callback URLs registered with each provider must match `BASE_URL`:
 - GitLab: `https://erdeer.dev/auth/gitlab/callback`
 - Google: `https://erdeer.dev/auth/google/callback`
 
-Subsequent deploys happen automatically on push to `main` (or manually via the workflow's "Run workflow" button). Migrations run automatically on startup.
+Subsequent deploys happen automatically when an `X.Y.Z` tag is pushed (or manually via the Release workflow's "Run workflow" button on a tag). Migrations run automatically on startup.
 
 ## MCP Server
 
@@ -85,7 +86,7 @@ ERDeer exposes diagram CRUD and AML validation via MCP at `POST /mcp`.
 
 Authenticate with a bearer token (`Authorization: Bearer erd_...`). Tokens are managed in the app under API Tokens.
 
-**Tools**: `list_diagrams`, `get_diagram`, `create_diagram`, `update_diagram`, `delete_diagram`, `validate_aml`
+**Tools**: `list_diagrams`, `get_diagram`, `create_diagram`, `update_diagram`, `delete_diagram`, `export_diagram`, `validate_aml`
 
 **Resources**: `aml://spec` -- AML language specification
 

@@ -1,7 +1,8 @@
+import { exportFilename } from "@erdeer/shared";
 import type {} from "@fastify/cookie";
 import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { optionalAuth, requireAuth } from "../auth/middleware.js";
+import { optionalAuth, requireAnyAuth } from "../auth/middleware.js";
 import { generateId } from "../auth/session.js";
 import { db } from "../db/connection.js";
 import { diagrams, teamMembers, teams } from "../db/schema.js";
@@ -12,22 +13,10 @@ import {
   onDiagramListChanged,
   onDiagramUpdate,
 } from "../events.js";
+import { userCanEdit, userCanRead } from "./access.js";
+import { buildExportHtml } from "./export.js";
 
-type Diagram = typeof diagrams.$inferSelect;
-
-function userCanEdit(diagram: Diagram, userId: string | undefined): boolean {
-  if (!userId) return false;
-  if (diagram.ownerUserId === userId) return true;
-  if (!diagram.teamId) return false;
-  const membership = db
-    .select()
-    .from(teamMembers)
-    .where(and(eq(teamMembers.teamId, diagram.teamId), eq(teamMembers.userId, userId)))
-    .get();
-  return !!membership;
-}
-
-export async function registerDiagramRoutes(app: FastifyInstance) {
+export async function registerDiagramRoutes(app: FastifyInstance, baseUrl: string) {
   // Public-readable: get a single diagram (auth optional; public visibility allows anon read)
   app.get("/api/diagrams/:id", { onRequest: optionalAuth }, async (req: FastifyRequest, reply) => {
     const userId = (req as any).userId as string | undefined;
@@ -55,6 +44,31 @@ export async function registerDiagramRoutes(app: FastifyInstance) {
 
     return { ...diagram, canEdit, teamName };
   });
+
+  // Public-readable: download a diagram as a self-contained HTML file.
+  // Session, API bearer token, or anonymous (public diagrams) access.
+  app.get(
+    "/api/diagrams/:id/export",
+    { onRequest: optionalAuth },
+    async (req: FastifyRequest, reply) => {
+      const userId = (req as any).userId as string | undefined;
+      const { id } = req.params as { id: string };
+
+      const diagram = db.select().from(diagrams).where(eq(diagrams.id, id)).get();
+      if (!diagram || !userCanRead(diagram, userId)) {
+        return reply.status(404).send({ error: "Diagram not found" });
+      }
+
+      const html = await buildExportHtml(diagram, baseUrl);
+
+      // Header values must be latin-1; the slug may contain other letters.
+      const filename = exportFilename(diagram.title).replace(/[^\x20-\x7e]/g, "_");
+      return reply
+        .header("content-type", "text/html; charset=utf-8")
+        .header("content-disposition", `attachment; filename="${filename}"`)
+        .send(html);
+    },
+  );
 
   // Public-readable: SSE for a single diagram
   app.get(
@@ -93,7 +107,7 @@ export async function registerDiagramRoutes(app: FastifyInstance) {
   );
 
   await app.register(async (scoped) => {
-    scoped.addHook("onRequest", requireAuth);
+    scoped.addHook("onRequest", requireAnyAuth);
 
     // List personal diagrams
     scoped.get("/api/diagrams/personal", async (req) => {

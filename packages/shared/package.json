@@ -5,6 +5,24 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./layout": {
+      "types": "./dist/layout.d.ts",
+      "default": "./dist/layout.js"
+    },
+    "./export": {
+      "types": "./dist/export.d.ts",
+      "default": "./dist/export.js"
+    },
+    "./export-html": {
+      "types": "./dist/exportHtml.d.ts",
+      "default": "./dist/exportHtml.js"
+    }
+  },
   "dependencies": {
     "@azimutt/aml": "^0.1.10"
   },

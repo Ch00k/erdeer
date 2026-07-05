@@ -7,24 +7,11 @@ import { Navbar } from "../components/Navbar.js";
 import type { TableNodeData } from "../components/TableNode.js";
 import { Workspace } from "../components/Workspace.js";
 import type { EdgeCustomization, EdgeLayout, NodeLayout } from "../layout.js";
+import { schemaToNodes } from "../nodes.js";
 import type { Schema } from "../types.js";
 import styles from "./SchemaPage.module.css";
 
 type Layout = NodeLayout;
-
-function schemaToNodes(schema: Schema, layout: Layout): Node<TableNodeData>[] {
-  return schema.tables.map((table) => ({
-    id: table.name,
-    type: "table",
-    position: layout[table.name] ?? table.position,
-    data: {
-      label: table.name,
-      schema: table.schema,
-      columns: table.columns,
-      comment: table.comment,
-    },
-  }));
-}
 
 export function SchemaPage() {
   const initialSchema = parseAml(schemaAml);
@@ -83,6 +70,7 @@ export function SchemaPage() {
         edgeLayout={edgeLayout}
         onEdgeLayoutChange={handleEdgeLayoutChange}
         onEdgeLayoutReplace={handleEdgeLayoutReplace}
+        exportTitle="App Schema"
       />
       <Footer />
     </div>

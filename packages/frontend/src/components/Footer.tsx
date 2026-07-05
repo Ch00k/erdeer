@@ -6,7 +6,9 @@ export function Footer() {
 
   return (
     <footer className={styles.footer}>
-      <span className={styles.copyright}>&copy; {new Date().getFullYear()} ERDeer</span>
+      <span className={styles.copyright}>
+        &copy; {new Date().getFullYear()} ERDeer {__ERDEER_VERSION__}
+      </span>
       <div className={styles.links}>
         <span>
           Powered by{" "}

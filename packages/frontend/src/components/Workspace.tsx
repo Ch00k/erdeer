@@ -1,5 +1,6 @@
 import type { Node, OnNodesChange } from "@xyflow/react";
 import { useCallback, useState } from "react";
+import { downloadDiagramHtml } from "../export/download.js";
 import type { EdgeCustomization, EdgeLayout } from "../layout.js";
 import type { Schema } from "../types.js";
 import { AmlReference } from "./AmlReference.js";
@@ -19,6 +20,7 @@ interface WorkspaceProps {
   onEdgeLayoutChange: (key: string, patch: EdgeCustomization) => void;
   onEdgeLayoutReplace: (next: EdgeLayout) => void;
   readOnly?: boolean;
+  exportTitle: string;
 }
 
 export function Workspace({
@@ -31,6 +33,7 @@ export function Workspace({
   onEdgeLayoutChange,
   onEdgeLayoutReplace,
   readOnly,
+  exportTitle,
 }: WorkspaceProps) {
   const [editorWidth, setEditorWidth] = useState(() => Math.round(window.innerWidth * 0.25));
   const [editorCollapsed, setEditorCollapsed] = useState(false);
@@ -39,6 +42,15 @@ export function Workspace({
   const handleResize = useCallback((deltaX: number) => {
     setEditorWidth((w) => Math.max(200, Math.min(800, w + deltaX)));
   }, []);
+
+  // Lives here rather than in the diagram component tree so download.ts (and
+  // the data placeholder literal it carries) stays out of the export viewer
+  // bundle, which reuses Diagram.
+  const handleExport = useCallback(() => {
+    downloadDiagramHtml({ title: exportTitle, aml, schema, nodes, edgeLayout }).catch(() => {
+      window.alert("Export failed: the viewer template could not be loaded.");
+    });
+  }, [exportTitle, aml, schema, nodes, edgeLayout]);
 
   return (
     <div className={styles.workspace}>
@@ -89,6 +101,7 @@ export function Workspace({
           onEdgeLayoutChange={onEdgeLayoutChange}
           onEdgeLayoutReplace={onEdgeLayoutReplace}
           readOnly={readOnly}
+          onExport={handleExport}
         />
         {referenceOpen && <AmlReference onClose={() => setReferenceOpen(false)} />}
       </div>
