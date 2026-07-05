@@ -46,6 +46,11 @@ export function LoginPage() {
                   Sign in with GitLab
                 </a>
               )}
+              {providers.dev && (
+                <a href="/auth/dev/login" className={styles.button}>
+                  Dev login
+                </a>
+              )}
             </div>
           )}
           <div className={styles.divider}>or</div>

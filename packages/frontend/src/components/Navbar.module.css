@@ -9,6 +9,12 @@
   flex-shrink: 0;
 }
 
+.left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .title {
   display: flex;
   align-items: center;
@@ -17,6 +23,25 @@
   font-weight: 600;
   color: var(--color-text);
   text-decoration: none;
+}
+
+.back {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.back:hover {
+  background: var(--color-canvas-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
 }
 
 .logo {
@@ -120,6 +145,11 @@
 
 .menuItem:hover {
   background-color: var(--color-canvas-bg);
+}
+
+.menuItemActive {
+  color: var(--color-primary);
+  font-weight: 600;
 }
 
 .menuItemDanger {

@@ -21,8 +21,8 @@ Version 0.1.0 - **beta**.
 - `theme.tsx` - ThemeProvider/useTheme. Stores `light`/`dark`/`system` in `localStorage["erdeer_theme"]`, applies `data-theme` attribute to `<html>`, follows OS prefers-color-scheme when in `system` mode. An inline script in `index.html` applies the saved value before first paint to avoid FOUC.
 - `api.ts` - API client functions (auth, diagrams CRUD, teams, invitations, tokens)
 - `pages/LoginPage.tsx` - OAuth login buttons (GitHub, Google, GitLab) plus a "Try without an account" link to the sandbox
-- `pages/DashboardPage.tsx` - diagram list with personal/team tabs, create/delete
-- `pages/DesignerPage.tsx` - AML editor + diagram canvas (via `Workspace`), auto-saves to API. Renders read-only when the viewer can't write (anon viewer, or non-member). Owners get a Public/Private visibility toggle.
+- `pages/DashboardPage.tsx` - diagram list with personal/team tabs, create/delete. The active tab is stored in the URL (`?tab=team`, personal is the bare `/`) so it survives refresh and can be linked to
+- `pages/DesignerPage.tsx` - AML editor + diagram canvas (via `Workspace`), auto-saves to API. Renders read-only when the viewer can't write (anon viewer, or non-member). Owners get a Public/Private visibility toggle. Logged-in viewers get a navbar "Diagrams" back link pointing at the dashboard tab (personal/team) the diagram belongs to.
 - `pages/SandboxPage.tsx` - public, anonymous-only editor (via `Workspace`) backed by `localStorage`. Single sandbox doc with title field and Reset button. Logged-in users get redirected to `/`.
 - `pages/TeamsPage.tsx` - team management: create teams, invite/remove members, accept/decline invitations, team roles (owner/member)
 - `pages/TokensPage.tsx` - API token management (list, create, revoke)
@@ -31,7 +31,7 @@ Version 0.1.0 - **beta**.
 - `nodes.ts` - `schemaToNodes(schema, layout)` builds the React Flow table nodes; shared by the Designer, Sandbox, and Schema pages and the export viewer
 - `export/` - static HTML export (payload shape `ExportData` and injection helpers live in `@erdeer/shared`). `main.tsx` + `Viewer.tsx` are a second Vite entry that renders the JSON embedded in the payload script tag as a title bar (with an ERDeer brand link to `appUrl`), a collapsible/resizable read-only AML pane (`AmlCode.tsx`), and a read-only `Diagram` (no Monaco); `AmlCode.tsx` highlights the AML with a tiny sticky-regex tokenizer whose rules are copied from @azimutt/aml's Monarch grammar (importing the grammar would pull the whole parser, ~630 kB, into the bundle - keep the rules in sync with `src/extensions/monaco.ts` upstream); `download.ts` fetches the prebuilt `/export-viewer.html` template, injects the diagram's JSON via `renderExportHtml`, and triggers the file download; `elkStub.ts` replaces elkjs in the viewer build (auto-layout is unreachable read-only, and ELK is ~1.4 MB). `download.ts` (and `@erdeer/shared/export-html`, which carries the placeholder literal) must stay out of the viewer entry's import graph: a copy of the placeholder inside the template's inlined JS could be hit by the injection instead of the payload tag (which is why `Workspace`, not `DiagramControls`, owns the export handler)
 - `vite.export.config.ts` - builds the export viewer entry (`export-viewer.html`) into a single self-contained file via `vite-plugin-singlefile`, output to `public/` (gitignored) so the dev server serves it and the main build copies it into `dist/`. Runs before `vite`/`vite build` in the package's `dev`/`build` scripts (`build:export`)
-- `components/Navbar.tsx` - shared navbar with theme toggle (sun/moon) and user dropdown menu (Teams, API Tokens, Sign out, Delete account)
+- `components/Navbar.tsx` - shared navbar with theme toggle (sun/moon), an optional `back` link (`{ to, label }`, rendered next to the logo), and user dropdown menu (Diagrams, Teams, API Tokens, Sign out, Delete account). The dropdown highlights the entry matching the current route
 - `components/Footer.tsx` - shared footer with copyright and Schema link
 - `components/ConfirmDialog.tsx` - modal confirmation dialog (replaces native confirm())
 - `components/Workspace.tsx` - shared editor+diagram layout used by the Designer, Sandbox, and Schema pages. Owns the editor-pane width (resizable), the collapse/expand state (fully hides the editor pane and resize handle, surfacing a top-left expand button over the diagram), and the AML reference toggle. Takes `aml`/`onAmlChange`/`schema`/`nodes`/`onNodesChange`/`readOnly`/`exportTitle`. Owns the HTML-export handler (built from `exportTitle` + schema/nodes/edgeLayout, passed down as `onExport`).
@@ -65,9 +65,9 @@ Version 0.1.0 - **beta**.
 
 - `src/db/schema.ts` - Drizzle ORM table definitions (users, oauth_accounts, sessions, teams, team_members, team_invitations, diagrams, api_tokens)
 - `src/db/connection.ts` - SQLite connection via better-sqlite3 with WAL mode
-- `src/auth/providers.ts` - Arctic OAuth provider setup (GitHub, Google, GitLab)
+- `src/auth/providers.ts` - Arctic OAuth provider setup (GitHub, Google, GitLab), plus `devLoginEnabled()` (the dev login is on outside production when `DEV_CLIENT_ID`/`DEV_CLIENT_SECRET` are both set)
 - `src/auth/session.ts` - Session creation, validation (with auto-extend), deletion
-- `src/auth/routes.ts` - OAuth login/callback routes, logout (POST), /auth/me, /auth/providers endpoints
+- `src/auth/routes.ts` - OAuth login/callback routes, logout (POST), /auth/me, /auth/providers endpoints. When `devLoginEnabled()`, also registers `GET /auth/dev/login`, which mints a session for a fixed `dev@localhost` user (provider `dev`) with no external OAuth; `/auth/providers` reports it as `dev: true`
 - `src/auth/middleware.ts` - auth hooks: `requireAuth` (session cookie only), `optionalAuth` (attaches userId from a session cookie or an API bearer token; an invalid bearer token is rejected with 401, no/invalid session passes through), and `requireAnyAuth` (session or token, 401 otherwise). Diagram CRUD uses `requireAnyAuth` so the CLI and agents can write with a token; token management, teams, and account deletion stay on `requireAuth` so a leaked token cannot mint further credentials or manage membership
 - `src/auth/token.ts` - API token creation, hashing, and bearer token auth middleware
 - `src/diagrams/routes.ts` - Diagram CRUD API (personal/team list, get, create, update, delete), authenticated by session or API bearer token (`requireAnyAuth`). `GET /api/diagrams/:id` and the per-diagram SSE endpoint use `optionalAuth`: anonymous reads succeed when `visibility = 'public'`. The GET response includes a `canEdit` flag derived from session + ownership/team membership. `PUT` accepts a `visibility` field but only the owner can change it. `GET /api/diagrams/:id/export` downloads the diagram as a self-contained HTML file (read access: session, API bearer token, or anonymous when public; an invalid bearer token is rejected even for public diagrams).
@@ -150,12 +150,13 @@ Exposes diagram CRUD and AML validation via MCP (Model Context Protocol) at `POS
 - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` - GitHub OAuth (optional)
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` - Google OAuth (optional)
 - `GITLAB_CLIENT_ID` / `GITLAB_CLIENT_SECRET` - GitLab OAuth (optional)
+- `DEV_CLIENT_ID` / `DEV_CLIENT_SECRET` - enable the local "Dev login" button when both are non-empty and `NODE_ENV` is not `production`. The values are only presence flags (there is no external dev IdP). Never set in production
 - `DATABASE_PATH` - SQLite database path (default: `data/db.sqlite`)
 - `PORT` - Server port (default: `3001`)
 - `HOST` - Bind address (default: `127.0.0.1`)
 - `NODE_ENV` - Set to `production` by the Docker image. Enables the session cookie's `Secure` flag.
 
-At least one OAuth provider must be configured for login to work, in dev as well as in production.
+At least one OAuth provider must be configured for login to work in production. In dev, the `DEV_CLIENT_ID`/`DEV_CLIENT_SECRET` dev login is an alternative to configuring an OAuth provider.
 
 ## Development
 

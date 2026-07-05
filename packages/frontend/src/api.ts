@@ -43,6 +43,7 @@ export interface Providers {
   github: boolean;
   google: boolean;
   gitlab: boolean;
+  dev: boolean;
 }
 
 export async function fetchProviders(): Promise<Providers> {

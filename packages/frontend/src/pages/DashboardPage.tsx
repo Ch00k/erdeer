@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import {
   createDiagram,
   type Diagram,
@@ -20,7 +20,13 @@ type Tab = "personal" | "team";
 export function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>("personal");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab: Tab = searchParams.get("tab") === "team" ? "team" : "personal";
+
+  const selectTab = (next: Tab) => {
+    setSearchParams(next === "team" ? { tab: "team" } : {}, { replace: true });
+  };
+
   const [personalDiagrams, setPersonalDiagrams] = useState<Diagram[]>([]);
   const [teamDiagrams, setTeamDiagrams] = useState<Diagram[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -99,13 +105,13 @@ export function DashboardPage() {
           <div className={styles.tabs}>
             <button
               className={`${styles.tab} ${tab === "personal" ? styles.tabActive : ""}`}
-              onClick={() => setTab("personal")}
+              onClick={() => selectTab("personal")}
             >
               Personal
             </button>
             <button
               className={`${styles.tab} ${tab === "team" ? styles.tabActive : ""}`}
-              onClick={() => setTab("team")}
+              onClick={() => selectTab("team")}
             >
               Team
             </button>
