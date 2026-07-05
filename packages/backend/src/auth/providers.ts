@@ -8,6 +8,17 @@ function requireEnv(name: string): string {
   return value;
 }
 
+// The dev provider is a local-only shortcut that mints a session without an
+// external OAuth round-trip. It is available only outside production and only
+// when both credential env vars are set, mirroring the real providers' config.
+export function devLoginEnabled(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    !!process.env.DEV_CLIENT_ID &&
+    !!process.env.DEV_CLIENT_SECRET
+  );
+}
+
 export function createProviders(callbackBaseUrl: string) {
   const providers: Record<string, arctic.GitHub | arctic.Google | arctic.GitLab> = {};
 

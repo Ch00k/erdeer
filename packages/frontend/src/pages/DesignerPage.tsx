@@ -256,9 +256,13 @@ export function DesignerPage() {
     </div>
   );
 
+  const back = user
+    ? { to: teamId ? "/?tab=team" : "/?tab=personal", label: "Diagrams" }
+    : undefined;
+
   return (
     <div className={styles.layout}>
-      <Navbar center={titleInput} />
+      <Navbar center={titleInput} back={back} />
       <Workspace
         aml={aml}
         onAmlChange={handleChange}

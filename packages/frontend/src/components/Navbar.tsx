@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { deleteAccount, logout } from "../api.js";
 import { useAuth } from "../auth.js";
 import { useTheme } from "../theme.js";
@@ -8,12 +8,14 @@ import styles from "./Navbar.module.css";
 
 interface NavbarProps {
   center?: ReactNode;
+  back?: { to: string; label: string };
 }
 
-export function Navbar({ center }: NavbarProps) {
+export function Navbar({ center, back }: NavbarProps) {
   const { user } = useAuth();
   const { resolvedTheme, toggle } = useTheme();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<"signOut" | "deleteAccount" | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -54,21 +56,44 @@ export function Navbar({ center }: NavbarProps) {
   return (
     <>
       <header className={styles.header}>
-        <a
-          href="/"
-          className={styles.title}
-          onClick={(e) => {
-            e.preventDefault();
-            navigate("/");
-          }}
-        >
-          <img
-            src={resolvedTheme === "dark" ? "/logo_dark.svg" : "/logo.svg"}
-            alt=""
-            className={styles.logo}
-          />
-          ERDeer
-        </a>
+        <div className={styles.left}>
+          <a
+            href="/"
+            className={styles.title}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate("/");
+            }}
+          >
+            <img
+              src={resolvedTheme === "dark" ? "/logo_dark.svg" : "/logo.svg"}
+              alt=""
+              className={styles.logo}
+            />
+            ERDeer
+          </a>
+          {back && (
+            <a
+              href={back.to}
+              className={styles.back}
+              onClick={(e) => {
+                e.preventDefault();
+                navigate(back.to);
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <path
+                  d="M8.5 3L4.5 7L8.5 11"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              {back.label}
+            </a>
+          )}
+        </div>
         {center && <div className={styles.center}>{center}</div>}
         <div className={styles.right}>
           <button
@@ -121,7 +146,16 @@ export function Navbar({ center }: NavbarProps) {
               {menuOpen && (
                 <div className={styles.menu}>
                   <button
-                    className={styles.menuItem}
+                    className={`${styles.menuItem} ${pathname === "/" ? styles.menuItemActive : ""}`}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      navigate("/");
+                    }}
+                  >
+                    Diagrams
+                  </button>
+                  <button
+                    className={`${styles.menuItem} ${pathname === "/teams" ? styles.menuItemActive : ""}`}
                     onClick={() => {
                       setMenuOpen(false);
                       navigate("/teams");
@@ -130,7 +164,7 @@ export function Navbar({ center }: NavbarProps) {
                     Teams
                   </button>
                   <button
-                    className={styles.menuItem}
+                    className={`${styles.menuItem} ${pathname === "/tokens" ? styles.menuItemActive : ""}`}
                     onClick={() => {
                       setMenuOpen(false);
                       navigate("/tokens");

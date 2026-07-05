@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { db } from "../db/connection.js";
 import { oauthAccounts, users } from "../db/schema.js";
+import { devLoginEnabled } from "./providers.js";
 import { createSession, generateId } from "./session.js";
 
 const COOKIE_OPTIONS = {
@@ -142,8 +143,37 @@ export function registerAuthRoutes(
       github: "github" in providers,
       google: "google" in providers,
       gitlab: "gitlab" in providers,
+      dev: devLoginEnabled(),
     };
   });
+
+  // Dev login: mints a session for a fixed local user with no external OAuth.
+  // The user is keyed by its email rather than an OAuth account, so it reuses
+  // any existing dev@localhost user and creates one on a fresh database.
+  if (devLoginEnabled()) {
+    const DEV_EMAIL = "dev@localhost";
+
+    app.get("/auth/dev/login", async (_req, reply) => {
+      const existing = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.email, DEV_EMAIL))
+        .get();
+
+      let userId = existing?.id;
+      if (!userId) {
+        userId = generateId();
+        await db.insert(users).values({ id: userId, email: DEV_EMAIL, name: "Dev User" });
+      }
+
+      const sessionId = await createSession(userId);
+      reply.setCookie("session", sessionId, {
+        ...COOKIE_OPTIONS,
+        maxAge: 30 * 24 * 60 * 60,
+      });
+      return reply.redirect("/");
+    });
+  }
 
   // GitHub
   if (providers.github) {
