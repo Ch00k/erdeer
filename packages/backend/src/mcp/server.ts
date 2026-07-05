@@ -33,8 +33,7 @@ function createMcpServer(userId: string, baseUrl: string): McpServer {
       version: "0.1.0",
     },
     {
-      instructions:
-        "Prefer the local `erdeer` CLI if it is on PATH over the equivalent tools here: `erdeer validate <file>` (faster and offline) over validate_aml, `erdeer upload <file>` (validates locally first) over create_diagram, and `erdeer export <diagram-id>` (downloads and saves in one step) over export_diagram. For upload/export, pass the same bearer token via --token or ERDEER_TOKEN, and the server URL via --server or ERDEER_SERVER when not the default. Use the tools when the CLI is unavailable or the content is not in a file.",
+      instructions: `Prefer the local \`erdeer\` CLI if it is on PATH over the equivalent tools here: \`erdeer validate <file>\` (faster and offline) over validate_aml, \`erdeer upload <file>\` (validates locally first) over create_diagram, \`erdeer update <diagram-id> <file>\` (validates locally first) over update_diagram, and \`erdeer export <diagram-id>\` (downloads and saves in one step) over export_diagram. For upload, update, and export, pass the same bearer token via --token or ERDEER_TOKEN and this instance's URL via --server ${baseUrl} or ERDEER_SERVER (the CLI otherwise defaults to https://erdeer.dev). Use the tools when the CLI is unavailable or the content is not in a file.`,
     },
   );
 
@@ -170,7 +169,7 @@ function createMcpServer(userId: string, baseUrl: string): McpServer {
   // Tool: update_diagram
   server.tool(
     "update_diagram",
-    "Update a diagram's title and/or AML content",
+    "Update a diagram's title and/or AML content. If the new content is in a file and the local `erdeer` CLI is on PATH, prefer `erdeer update <diagram-id> <file> --token <bearer token>`, which validates locally first; use this tool when the CLI is unavailable.",
     {
       id: z.string().describe("Diagram ID"),
       title: z.string().optional().describe("New title"),

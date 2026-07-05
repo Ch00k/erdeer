@@ -11,6 +11,7 @@ const USAGE = `erdeer ${VERSION} - ERDeer command-line tool
 Usage:
   erdeer validate [file] [--json]
   erdeer upload <file> [options]
+  erdeer update <diagram-id> [file] [options]
   erdeer export <diagram-id> [options]
 
 Commands:
@@ -18,12 +19,16 @@ Commands:
                        given (or "-"). Exit 0 if valid, 1 if invalid.
   upload <file>        Validate an AML file and create a diagram from it on
                        the server. Requires an API token.
+  update <diagram-id>  Validate AML (from a file, or stdin if none is given)
+                       and overwrite an existing diagram's content on the
+                       server. Requires an API token.
   export <diagram-id>  Download a diagram as a self-contained HTML file.
                        Public diagrams need no token.
 
 Options:
-  --json               Emit the result as JSON (validate, upload).
-  --title <title>      Diagram title (upload; defaults to the file name).
+  --json               Emit the result as JSON (validate, upload, update).
+  --title <title>      Diagram title (upload: defaults to the file name;
+                       update: left unchanged if omitted).
   --team <team-id>     Create the diagram in a team (upload).
   -o, --output <file>  Output path (export; defaults to the server-suggested
                        file name).
@@ -201,6 +206,51 @@ async function upload(opts: Options): Promise<number> {
   return 0;
 }
 
+async function update(opts: Options): Promise<number> {
+  const id = opts.positional[0];
+  if (!id) {
+    process.stderr.write(`update requires a diagram id.\n\n${USAGE}`);
+    return 2;
+  }
+
+  const input = readInput(opts.positional[1]);
+  if (typeof input === "number") return input;
+
+  const result = validateAml(input.content);
+  if (!result.valid) {
+    printValidationErrors(input.source, result.errors);
+    return 1;
+  }
+
+  if (!opts.token) {
+    process.stderr.write("An API token is required to update (--token or ERDEER_TOKEN).\n");
+    return 2;
+  }
+
+  const res = await request(opts, `/api/diagrams/${id}`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      amlContent: input.content,
+      ...(opts.title !== undefined && { title: opts.title }),
+    }),
+  });
+  if (typeof res === "number") return res;
+
+  if (!res.ok) {
+    process.stderr.write(`Update failed: HTTP ${res.status} ${await res.text()}\n`);
+    return 1;
+  }
+
+  const diagram = (await res.json()) as { id: string; title: string };
+  if (opts.json) {
+    process.stdout.write(`${JSON.stringify(diagram, null, 2)}\n`);
+  } else {
+    process.stdout.write(`Updated "${diagram.title}": ${opts.server}/diagrams/${diagram.id}\n`);
+  }
+  return 0;
+}
+
 async function exportDiagram(opts: Options): Promise<number> {
   const id = opts.positional[0];
   if (!id) {
@@ -261,6 +311,8 @@ async function run(argv: string[]): Promise<number> {
       return validate(opts);
     case "upload":
       return upload(opts);
+    case "update":
+      return update(opts);
     case "export":
       return exportDiagram(opts);
     default:

@@ -126,17 +126,18 @@ Exposes diagram CRUD and AML validation via MCP (Model Context Protocol) at `POS
 
 **Resources**: `aml://spec` - AML language specification (docs/aml-spec.md)
 
-**CLI preference**: The server `instructions` field and the `validate_aml`/`create_diagram`/`export_diagram` tool descriptions steer agents to prefer the local `erdeer` CLI when it is on PATH (`erdeer validate <file>`, `erdeer upload <file>`, `erdeer export <diagram-id>`), falling back to the tools when the CLI is unavailable or the content is not in a file. The CLI and the tools share the same shared-package logic and REST endpoints, so their results are identical.
+**CLI preference**: The server `instructions` field and the `validate_aml`/`create_diagram`/`update_diagram`/`export_diagram` tool descriptions steer agents to prefer the local `erdeer` CLI when it is on PATH (`erdeer validate <file>`, `erdeer upload <file>`, `erdeer update <diagram-id> <file>`, `erdeer export <diagram-id>`), falling back to the tools when the CLI is unavailable or the content is not in a file. The CLI and the tools share the same shared-package logic and REST endpoints, so their results are identical.
 
 **Transport**: Streamable HTTP (stateful sessions). Supports POST (requests), GET (SSE streams), DELETE (session cleanup). Each transport session is bound to the user who initialized it; requests reusing an `mcp-session-id` are rejected (403) when the authenticated token belongs to a different user.
 
 ## CLI
 
-`packages/cli` builds the `erdeer` command: local AML validation (so an agent can validate without an MCP round-trip) plus diagram upload and export against a server.
+`packages/cli` builds the `erdeer` command: local AML validation (so an agent can validate without an MCP round-trip) plus diagram upload, update, and export against a server.
 
 - **Commands**:
   - `erdeer validate [file] [--json]`. Reads AML from the file argument, or from stdin if no file is given (or `-`), matching the string-content model of the MCP `validate_aml` tool. Exit codes: `0` valid, `1` invalid AML, `2` usage or I/O error. Default output is human-readable; `--json` emits the same shape as the MCP tool.
   - `erdeer upload <file> [--title <t>] [--team <id>] [--json]`. Validates locally (invalid AML aborts with exit 1), then `POST /api/diagrams` with the bearer token; prints the new diagram's URL.
+  - `erdeer update <diagram-id> [file] [--title <t>] [--json]`. Reads AML from the file (or stdin if none), validates locally (invalid AML aborts with exit 1), then `PUT /api/diagrams/:id` with the bearer token; prints the diagram's URL. Overwrites `amlContent`; `--title` also renames it. Mirrors the `upload` flow for an existing diagram.
   - `erdeer export <diagram-id> [-o <file>]`. Downloads `GET /api/diagrams/:id/export` and saves it (default filename from the `Content-Disposition` header). Public diagrams need no token.
 - **Server config**: `--server`/`ERDEER_SERVER` (default `https://erdeer.dev`) and `--token`/`ERDEER_TOKEN`. Exit codes across commands: `0` success, `1` operation rejected (invalid AML, HTTP error), `2` usage/I-O/network error.
 - **Version**: `erdeer --version` prints the version baked in at compile time (see the Deployment section's version-stamping notes).
