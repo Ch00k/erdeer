@@ -72,7 +72,7 @@ deployment and environment variables: [README.md](README.md). The AML spec serve
 ### CLI (`packages/cli`)
 
 - Built with **Bun, not Node**: `@azimutt/aml` imports its `package.json` without a JSON import attribute, which Node
-  23+ rejects (the backend sidesteps it by running through `tsx`).
+  23+ rejects (the backend sidesteps it by bundling with esbuild).
 - Exit codes are a contract: `0` success, `1` operation rejected (invalid AML, HTTP error), `2` usage/I-O/network
   error.
 

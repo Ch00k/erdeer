@@ -94,6 +94,7 @@ change must not break and points here for the why. Moved out of `CLAUDE.md` on 2
 - **Rate limiting** via `@fastify/rate-limit` (global 300 requests/minute per client IP). The limiter keys on `Fly-Client-IP` (set and overwritten by Fly's proxy, so not client-spoofable), falling back to `req.ip`. `trustProxy` trusts only loopback/private hops, so `req.ip` comes from a proxy-appended `X-Forwarded-For` entry rather than a client-supplied one
 - **OAuth state** stored in-memory Map (not cookies) to avoid Vite proxy cookie issues in dev
 - **Auto-migration** on startup via drizzle-orm migrator
+- **Bundled backend**: `build.mjs` bundles the server and its dependencies with esbuild into one ESM file, `dist/server.js`, run by plain Node. `@azimutt/aml` is not valid Node ESM (extensionless imports, a JSON import without an attribute), so it runs only bundled or through a loader; a runtime loader (`tsx`) cost ~24 MB of RSS. `better-sqlite3` stays external for its native addon. `src/paths.ts` resolves files relative to the package root, since a module's own location differs between source and bundle
 - **Static file serving** via @fastify/static in production (backend serves frontend dist)
 - **React Router** v7 for client-side routing (login, dashboard, designer pages)
 - **@modelcontextprotocol/sdk** for MCP server (Streamable HTTP transport, bearer token auth)
@@ -140,7 +141,7 @@ Exposes diagram CRUD and AML validation via MCP (Model Context Protocol) at `POS
 - **Version**: `erdeer --version` prints the version baked in at compile time (see the Deployment section's version-stamping notes).
 - **Shared logic**: imports `validateAml` from `@erdeer/shared` - no parsing logic of its own.
 - **Distribution**: standalone binaries built with `bun build --compile` and attached to GitHub Releases by the `release` job in `.github/workflows/ci.yml`, triggered on `X.Y.Z` tag pushes. Bun cross-compiles all five targets (`linux-x64`, `linux-arm64`, `darwin-x64`, `darwin-arm64`, `windows-x64.exe`) from a single runner. The package is `private` and not published to npm.
-- **Why Bun, not Node**: `@azimutt/aml` imports its `package.json` without a `type: json` import attribute, which Node 23+ rejects (the backend sidesteps this by running through `tsx`). Bun handles attribute-less JSON imports natively, so the compiled binary runs everywhere regardless of the host's Node version.
+- **Why Bun, not Node**: `@azimutt/aml` imports its `package.json` without a `type: json` import attribute, which Node 23+ rejects (the backend sidesteps this by bundling with esbuild). Bun handles attribute-less JSON imports natively, so the compiled binary runs everywhere regardless of the host's Node version.
 
 ## Environment variables
 

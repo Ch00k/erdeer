@@ -1,17 +1,15 @@
 import { readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { type ExportData, parseAml, parseLayout, renderExportHtml } from "@erdeer/shared";
+import { packageRoot } from "../paths.js";
 import type { Diagram } from "./access.js";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // The frontend dev script rebuilds the template in frontend/public, so that
 // copy is the fresher one in dev; the production image has it in both places
 // (the main build copies public/ into dist/), identical.
 const templateCandidates = [
-  resolve(__dirname, "../../../frontend/public/export-viewer.html"),
-  resolve(__dirname, "../../../frontend/dist/export-viewer.html"),
+  resolve(packageRoot, "../frontend/public/export-viewer.html"),
+  resolve(packageRoot, "../frontend/dist/export-viewer.html"),
 ];
 
 async function readTemplate(): Promise<string> {

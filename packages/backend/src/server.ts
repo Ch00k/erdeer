@@ -1,6 +1,5 @@
 import { existsSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import cookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
@@ -11,13 +10,12 @@ import { registerAuthRoutes } from "./auth/routes.js";
 import { db } from "./db/connection.js";
 import { registerDiagramRoutes } from "./diagrams/routes.js";
 import { registerMcpRoutes } from "./mcp/server.js";
+import { packageRoot } from "./paths.js";
 import { registerTeamRoutes } from "./teams/routes.js";
 import { registerTokenRoutes } from "./tokens/routes.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
 // Run migrations on startup
-const migrationsFolder = resolve(__dirname, "../drizzle");
+const migrationsFolder = resolve(packageRoot, "drizzle");
 if (existsSync(migrationsFolder)) {
   migrate(db, { migrationsFolder });
 }
@@ -56,7 +54,7 @@ await registerTokenRoutes(app);
 await registerMcpRoutes(app, baseUrl);
 
 // Serve frontend static files in production
-const frontendDist = resolve(__dirname, "../../frontend/dist");
+const frontendDist = resolve(packageRoot, "../frontend/dist");
 if (existsSync(frontendDist)) {
   await app.register(fastifyStatic, {
     root: frontendDist,

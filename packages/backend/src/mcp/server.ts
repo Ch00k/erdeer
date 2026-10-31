@@ -1,6 +1,5 @@
 import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { exportFilename, validateAml } from "@erdeer/shared";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -13,9 +12,9 @@ import { db } from "../db/connection.js";
 import { diagrams, teamMembers, teams } from "../db/schema.js";
 import { userCanEdit, userCanRead } from "../diagrams/access.js";
 import { emitDiagramListChanged, emitDiagramUpdate, getAffectedUserIds } from "../events.js";
+import { packageRoot } from "../paths.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const amlSpecPath = resolve(__dirname, "../../../../docs/aml-spec.md");
+const amlSpecPath = resolve(packageRoot, "../../docs/aml-spec.md");
 
 function createMcpServer(userId: string, baseUrl: string): McpServer {
   const server = new McpServer(
