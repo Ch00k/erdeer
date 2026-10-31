@@ -58,8 +58,8 @@ deployment and environment variables: [README.md](README.md). The AML spec serve
 - Read and write checks go through `userCanRead`/`userCanEdit` in `src/diagrams/access.ts`, shared by REST and MCP.
   Only the owner may change a diagram's `visibility`.
 - There is deliberately no user-search or enumeration endpoint; invitations are addressed by typed email.
-- An MCP transport session is bound to the user who initialized it; a request reusing its `mcp-session-id` with
-  another user's token is a 403.
+- **The MCP transport is stateless**: a server and transport per request, nothing kept between requests. Clients
+  rarely end sessions, so stored sessions leak memory.
 - `export_diagram` returns the export URL and filename, never the HTML (~400 kB would flood the calling agent's
   context).
 - Live updates: every diagram write emits on the event bus from **both** the REST and the MCP paths; the frontend

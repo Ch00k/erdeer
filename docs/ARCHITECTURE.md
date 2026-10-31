@@ -125,7 +125,7 @@ Exposes diagram CRUD and AML validation via MCP (Model Context Protocol) at `POS
 
 **CLI preference**: The server `instructions` field and the `validate_aml`/`create_diagram`/`update_diagram`/`export_diagram` tool descriptions steer agents to prefer the local `erdeer` CLI when it is on PATH (`erdeer validate <file>`, `erdeer upload <file>`, `erdeer update <diagram-id> <file>`, `erdeer export <diagram-id>`), falling back to the tools when the CLI is unavailable or the content is not in a file. The CLI and the tools share the same shared-package logic and REST endpoints, so their results are identical.
 
-**Transport**: Streamable HTTP (stateful sessions). Supports POST (requests), GET (SSE streams), DELETE (session cleanup). Each transport session is bound to the user who initialized it; requests reusing an `mcp-session-id` are rejected (403) when the authenticated token belongs to a different user.
+**Transport**: Streamable HTTP in stateless mode. Every POST is authenticated by its bearer token and gets its own `McpServer` and transport, closed when the response closes; GET and DELETE return 405. The server pushes no notifications to clients, so sessions would buy nothing - and clients rarely send DELETE, so a stateful server kept every session (~320 kB of heap each) until the process restarted.
 
 ## CLI
 
