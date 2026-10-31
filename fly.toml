@@ -1,17 +1,14 @@
 app = "erdeer"
 primary_region = "fra"
 
-# Swap on the root filesystem, so a memory spike slows the app down instead
-# of getting it OOM-killed.
-swap_size_mb = 512
-
 [build]
   dockerfile = "Dockerfile"
 
-# A volume attaches to a single machine, so a new machine cannot start
-# alongside the old one during a deploy. Stop and replace in place.
+# A volume attaches to a single machine, so the machine is replaced in place.
+# A rolling deploy waits for the health check only when the machine is
+# running; CI's deploy job checks a release that lands on a suspended one.
 [deploy]
-  strategy = "immediate"
+  strategy = "rolling"
 
 [env]
   HOST = "0.0.0.0"
@@ -27,7 +24,16 @@ swap_size_mb = 512
 [http_service]
   internal_port = 3000
   force_https = true
-  min_machines_running = 1
+  # Suspended when idle, which Fly bills like a stopped machine: storage only.
+  # It resumes from a memory snapshot, which keeps the OAuth state and the
+  # rate-limit counters and skips a cold start; a deploy discards the
+  # snapshot, so the first request after one boots the machine afresh. An
+  # open SSE stream (any designer or dashboard tab) is a connection, so the
+  # machine stays awake while one is open. Fly cannot suspend a machine with
+  # swap, so there is none.
+  min_machines_running = 0
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
 
   [[http_service.checks]]
     interval = "15s"
@@ -36,6 +42,7 @@ swap_size_mb = 512
     method = "get"
     path = "/health"
 
+# Node peaks at about 125 MB of RSS.
 [[vm]]
   size = "shared-cpu-1x"
   memory = "256mb"
