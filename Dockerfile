@@ -52,4 +52,4 @@ RUN dest=$(echo node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3)
     rm -rf /tmp/better-sqlite3-build
 
 WORKDIR /app/packages/backend
-CMD ["node", "--import", "tsx/esm", "dist/server.js"]
+CMD ["node", "dist/server.js"]

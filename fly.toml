@@ -1,6 +1,10 @@
 app = "erdeer"
 primary_region = "fra"
 
+# Swap on the root filesystem, so a memory spike slows the app down instead
+# of getting it OOM-killed.
+swap_size_mb = 512
+
 [build]
   dockerfile = "Dockerfile"
 

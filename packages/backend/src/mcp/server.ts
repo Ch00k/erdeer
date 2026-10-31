@@ -1,13 +1,10 @@
-import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { exportFilename, validateAml } from "@erdeer/shared";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { and, eq, isNotNull, isNull } from "drizzle-orm";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { generateId } from "../auth/session.js";
 import { requireTokenAuth } from "../auth/token.js";
@@ -15,16 +12,9 @@ import { db } from "../db/connection.js";
 import { diagrams, teamMembers, teams } from "../db/schema.js";
 import { userCanEdit, userCanRead } from "../diagrams/access.js";
 import { emitDiagramListChanged, emitDiagramUpdate, getAffectedUserIds } from "../events.js";
+import { packageRoot } from "../paths.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const amlSpecPath = resolve(__dirname, "../../../../docs/aml-spec.md");
-
-interface McpSession {
-  transport: StreamableHTTPServerTransport;
-  userId: string;
-}
-
-const sessions = new Map<string, McpSession>();
+const amlSpecPath = resolve(packageRoot, "../../docs/aml-spec.md");
 
 function createMcpServer(userId: string, baseUrl: string): McpServer {
   const server = new McpServer(
@@ -279,84 +269,33 @@ function createMcpServer(userId: string, baseUrl: string): McpServer {
 }
 
 export async function registerMcpRoutes(app: FastifyInstance, baseUrl: string) {
-  // MCP endpoint - token auth, then handle via MCP transport
+  // MCP endpoint - token auth, then handle via a stateless MCP transport: each
+  // request gets its own server and transport, released when the response
+  // closes, so nothing outlives the request.
   app.post("/mcp", async (req, reply) => {
-    // Authenticate
     await requireTokenAuth(req, reply);
     if (reply.sent) return;
 
     const userId = (req as any).userId as string;
-    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+    const mcpServer = createMcpServer(userId, baseUrl);
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    reply.raw.on("close", () => {
+      transport.close();
+      mcpServer.close();
+    });
 
-    if (sessionId && sessions.has(sessionId)) {
-      const session = sessions.get(sessionId)!;
-      if (session.userId !== userId) {
-        return reply.status(403).send({
-          jsonrpc: "2.0",
-          error: { code: -32000, message: "Forbidden: session belongs to another user" },
-          id: null,
-        });
-      }
-      await session.transport.handleRequest(req.raw, reply.raw, req.body);
-    } else if (!sessionId && isInitializeRequest(req.body)) {
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID(),
-        onsessioninitialized: (id) => {
-          sessions.set(id, { transport, userId });
-        },
-      });
-
-      transport.onclose = () => {
-        if (transport.sessionId) {
-          sessions.delete(transport.sessionId);
-        }
-      };
-
-      const mcpServer = createMcpServer(userId, baseUrl);
-      await mcpServer.connect(transport);
-      await transport.handleRequest(req.raw, reply.raw, req.body);
-    } else {
-      reply.status(400).send({
-        jsonrpc: "2.0",
-        error: { code: -32000, message: "Bad Request: No valid session ID" },
-        id: null,
-      });
-    }
+    await mcpServer.connect(transport);
+    await transport.handleRequest(req.raw, reply.raw, req.body);
   });
 
-  // Handle GET for SSE streams
-  app.get("/mcp", async (req, reply) => {
-    await requireTokenAuth(req, reply);
-    if (reply.sent) return;
-
-    const userId = (req as any).userId as string;
-    const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    if (sessionId && sessions.get(sessionId)?.userId === userId) {
-      await sessions.get(sessionId)!.transport.handleRequest(req.raw, reply.raw);
-    } else {
-      reply.status(400).send({
-        jsonrpc: "2.0",
-        error: { code: -32000, message: "Bad Request: No valid session ID" },
-        id: null,
-      });
-    }
-  });
-
-  // Handle DELETE for session cleanup
-  app.delete("/mcp", async (req, reply) => {
-    await requireTokenAuth(req, reply);
-    if (reply.sent) return;
-
-    const userId = (req as any).userId as string;
-    const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    if (sessionId && sessions.get(sessionId)?.userId === userId) {
-      await sessions.get(sessionId)!.transport.handleRequest(req.raw, reply.raw);
-    } else {
-      reply.status(400).send({
-        jsonrpc: "2.0",
-        error: { code: -32000, message: "Bad Request: No valid session ID" },
-        id: null,
-      });
-    }
-  });
+  // A stateless server has no server-initiated SSE stream and no session to
+  // terminate.
+  const methodNotAllowed = async (_req: FastifyRequest, reply: FastifyReply) =>
+    reply.status(405).send({
+      jsonrpc: "2.0",
+      error: { code: -32000, message: "Method not allowed" },
+      id: null,
+    });
+  app.get("/mcp", methodNotAllowed);
+  app.delete("/mcp", methodNotAllowed);
 }
