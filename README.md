@@ -42,6 +42,8 @@ make db-reset     # delete database and re-run migrations
 
 Deployed to [Fly.io](https://fly.io) as a single machine backed by one persistent volume (SQLite is a local file, so the app must not be scaled beyond one machine). Config lives in `fly.toml`.
 
+The machine is suspended when idle and resumed by the next request in a fraction of a second; an open designer or dashboard tab keeps it awake through its SSE stream. A deploy discards the suspended state, so the first request after one boots the machine afresh. SSH does not wake it: anything run over `fly ssh console` or `fly sftp` needs a request to `https://erdeer.dev/health` first, which is what the deploy job does to check the release.
+
 Deploys run from GitHub Actions (`.github/workflows/ci.yml`): pushing an `X.Y.Z` tag lints, publishes the CLI binaries to a GitHub Release, builds the Docker image in the runner, pushes it to Fly's registry (`registry.fly.io`), and runs `fly deploy --image`. Fly's own builder is not used. Production only deploys from tags; pushes to `main` and pull requests just lint.
 
 First-time setup:
