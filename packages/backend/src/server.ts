@@ -29,35 +29,30 @@ function pathOf(url: string): string {
 // deriving req.ip from X-Forwarded-For, so the client address is the one a
 // trusted proxy appended rather than a value the client can spoof.
 //
-// Requests are logged by the onResponse hook below, one line each. Anything else
-// that logs a request, an error among them, shows it through the req serializer,
-// which keeps no client address and no query string either.
+// Fastify logs each request as it arrives and again as it completes, and an
+// error with the request it came from. These serializers are what those lines
+// show: method, path and user agent, then status and bytes beside the time
+// taken, which is how to tell what woke the suspended machine. No client
+// address and no query string. Logged on arrival, so a stream that stays open
+// for hours, as a tab's SSE connection does, is seen when it starts.
 const app = Fastify({
   logger: {
     serializers: {
-      req: (request) => ({ method: request.method, path: pathOf(request.url) }),
+      req: (request) => ({
+        method: request.method,
+        path: pathOf(request.url),
+        userAgent: request.headers["user-agent"] ?? null,
+      }),
+      res: (reply) => {
+        const length = reply.getHeader?.("content-length");
+        return {
+          statusCode: reply.statusCode,
+          bytes: length === undefined ? null : Number(length),
+        };
+      },
     },
   },
-  disableRequestLogging: true,
   trustProxy: "loopback, linklocal, uniquelocal",
-});
-
-// One line per request: method, path, status, bytes, time taken and user agent,
-// which is how to tell what woke the suspended machine. No client address and no
-// query string.
-app.addHook("onResponse", async (request, reply) => {
-  const length = reply.getHeader("content-length");
-  request.log.info(
-    {
-      method: request.method,
-      path: pathOf(request.url),
-      status: reply.statusCode,
-      bytes: length === undefined ? null : Number(length),
-      ms: Math.round(reply.elapsedTime),
-      userAgent: request.headers["user-agent"] ?? null,
-    },
-    "request",
-  );
 });
 
 await app.register(cookie);
