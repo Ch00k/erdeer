@@ -20,10 +20,40 @@ if (existsSync(migrationsFolder)) {
   migrate(db, { migrationsFolder });
 }
 
+// The path without its query string, which can carry an OAuth callback's code.
+function pathOf(url: string): string {
+  return url.split("?")[0];
+}
+
 // Trust only loopback/private hops (a co-located Caddy or Fly's proxy) when
 // deriving req.ip from X-Forwarded-For, so the client address is the one a
 // trusted proxy appended rather than a value the client can spoof.
-const app = Fastify({ logger: true, trustProxy: "loopback, linklocal, uniquelocal" });
+//
+// Fastify logs each request as it arrives and again as it completes, and an
+// error with the request it came from. These serializers are what those lines
+// show: method, path and user agent, then status and bytes beside the time
+// taken, which is how to tell what woke the suspended machine. No client
+// address and no query string. Logged on arrival, so a stream that stays open
+// for hours, as a tab's SSE connection does, is seen when it starts.
+const app = Fastify({
+  logger: {
+    serializers: {
+      req: (request) => ({
+        method: request.method,
+        path: pathOf(request.url),
+        userAgent: request.headers["user-agent"] ?? null,
+      }),
+      res: (reply) => {
+        const length = reply.getHeader?.("content-length");
+        return {
+          statusCode: reply.statusCode,
+          bytes: length === undefined ? null : Number(length),
+        };
+      },
+    },
+  },
+  trustProxy: "loopback, linklocal, uniquelocal",
+});
 
 await app.register(cookie);
 
