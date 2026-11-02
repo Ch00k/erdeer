@@ -20,10 +20,45 @@ if (existsSync(migrationsFolder)) {
   migrate(db, { migrationsFolder });
 }
 
+// The path without its query string, which can carry an OAuth callback's code.
+function pathOf(url: string): string {
+  return url.split("?")[0];
+}
+
 // Trust only loopback/private hops (a co-located Caddy or Fly's proxy) when
 // deriving req.ip from X-Forwarded-For, so the client address is the one a
 // trusted proxy appended rather than a value the client can spoof.
-const app = Fastify({ logger: true, trustProxy: "loopback, linklocal, uniquelocal" });
+//
+// Requests are logged by the onResponse hook below, one line each. Anything else
+// that logs a request, an error among them, shows it through the req serializer,
+// which keeps no client address and no query string either.
+const app = Fastify({
+  logger: {
+    serializers: {
+      req: (request) => ({ method: request.method, path: pathOf(request.url) }),
+    },
+  },
+  disableRequestLogging: true,
+  trustProxy: "loopback, linklocal, uniquelocal",
+});
+
+// One line per request: method, path, status, bytes, time taken and user agent,
+// which is how to tell what woke the suspended machine. No client address and no
+// query string.
+app.addHook("onResponse", async (request, reply) => {
+  const length = reply.getHeader("content-length");
+  request.log.info(
+    {
+      method: request.method,
+      path: pathOf(request.url),
+      status: reply.statusCode,
+      bytes: length === undefined ? null : Number(length),
+      ms: Math.round(reply.elapsedTime),
+      userAgent: request.headers["user-agent"] ?? null,
+    },
+    "request",
+  );
+});
 
 await app.register(cookie);
 
